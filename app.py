@@ -8,8 +8,8 @@ import datetime
 
 st.set_page_config(page_title="Rahimafrooz Smart Price Offer Generator", layout="centered")
 
-st.title("🔋 Rahimafrooz Smart Price Offer Generator")
-st.write("কাস্টমার ও ব্যাটারি সিলেক্ট করুন। নিচের ফিল্ডগুলো থেকে যেকোনো মূল্য বা তথ্য পরিবর্তন করতে পারবেন!")
+st.title("🔋 Rahimafrooz Professional Offer Generator")
+st.write("সহজে কাস্টমার সিলেক্ট করুন এবং **একাধিক ব্যাটারি** যোগ করে প্রফেশনাল অফার লেটার তৈরি করুন!")
 
 @st.cache_data
 def load_data():
@@ -24,7 +24,7 @@ def load_data():
 df_cust, df_price = load_data()
 
 if df_cust is None or df_price is None:
-    st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হয়নি।")
+    st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হয়নি। অনুগ্রহ করে ফাইলটি চেক করুন।")
 else:
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
@@ -43,29 +43,34 @@ else:
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
-    st.write("### 📋 Selection Panel:")
-    
+    # --- STEP 1: CUSTOMER SELECTION ---
+    st.markdown("### 👤 Step 1: Customer Selection")
     customer_list = sorted(df_cust[cust_col].unique().tolist())
-    selected_customer = st.selectbox("Customer Name (Type to search):", options=customer_list)
+    selected_customer = st.selectbox("Customer Name (টাইপ করে সার্চ করতে পারেন):", options=customer_list, key="main_cust")
     
+    # --- STEP 2: MULTIPLE BATTERY ITEMS SELECTION ---
+    st.markdown("---")
+    st.markdown("### 🔋 Step 2: Add Battery Items (একাধিক ব্যাটারি যোগ করুন)")
+    
+    if 'item_count' not in st.session_state:
+        st.session_state.item_count = 1
+
+    def add_item():
+        st.session_state.item_count += 1
+
+    def remove_item():
+        if st.session_state.item_count > 1:
+            st.session_state.item_count -= 1
+
+    col_btn1, col_btn2 = st.columns([1, 4])
+    with col_btn1:
+        st.button("➕ Add Battery", on_click=add_item)
+    with col_btn2:
+        if st.session_state.item_count > 1:
+            st.button("➖ Remove Last", on_click=remove_item)
+
+    selected_items = []
     brand_list = sorted(df_price[brand_col].unique().tolist())
-    selected_brand = st.selectbox("Select Battery Brand:", options=brand_list)
-    
-    filtered_batteries = df_price[df_price[brand_col] == selected_brand]
-    battery_types = sorted(filtered_batteries[type_col].unique().tolist())
-    
-    selected_battery_type = st.selectbox("Battery Type (Type to search):", options=battery_types)
-    
-    # Fetch exact row for selected battery
-    bat_row = filtered_batteries[filtered_batteries[type_col] == selected_battery_type].iloc[0]
-    
-    def clean_val(val, default=""):
-        try:
-            if pd.isna(val):
-                return default
-            return str(val).strip()
-        except:
-            return default
 
     def clean_num(val):
         try:
@@ -73,45 +78,52 @@ else:
         except:
             return 0.0
 
-    # Extract default values from excel
-    def_post = clean_val(bat_row.get('Post', 'I'), 'I')
-    def_volt = clean_val(bat_row.get('Volt', '12'), '12')
-    def_ah = clean_val(bat_row.get('AH', ''), '')
-    def_plate = clean_val(bat_row.get('Plate', 'N/A'), 'N/A')
-    def_btype = clean_val(bat_row.get('Type.1', bat_row.get('Type', 'SMF')), 'SMF')
-    def_warranty = clean_val(bat_row.get('Warranty', '24M'), '24M')
-    
-    def_retail = clean_num(bat_row.get('Retail price with VAT', 0))
-    def_offer_wo_vat = clean_num(bat_row.get('Offer Without VAT', 0))
-    def_vat = clean_num(bat_row.get('VAT (15%)', 0))
-    def_special = clean_num(bat_row.get('Special Offer With VAT', 0))
-    if def_special == 0:
-        def_special = def_retail
+    for i in range(st.session_state.item_count):
+        with st.container():
+            st.markdown(f"**Item #{i+1}**")
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"brand_{i}")
+            
+            filtered_bats = df_price[df_price[brand_col] == b_brand]
+            bat_types = sorted(filtered_bats[type_col].unique().tolist())
+            
+            with c2:
+                b_type = st.selectbox(f"Battery Type #{i+1}", options=bat_types, key=f"type_{i}")
+            
+            # Fetch default row data
+            row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
+            
+            def_retail = clean_num(row_data.get('Retail price with VAT', 0))
+            def_special = clean_num(row_data.get('Special Offer With VAT', def_retail))
+            if def_special == 0:
+                def_special = def_retail
+                
+            c3, c4 = st.columns(2)
+            with c3:
+                custom_retail = st.number_input(f"Retail Price w/ VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
+            with c4:
+                custom_special = st.number_input(f"Special Offer With VAT (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
+            
+            selected_items.append({
+                "Brand": b_brand,
+                "Type": b_type,
+                "Post": str(row_data.get('Post', 'I')),
+                "Volt": str(row_data.get('Volt', '12')),
+                "AH": str(row_data.get('AH', '')),
+                "Plate": str(row_data.get('Plate', 'N/A')),
+                "Type_Sub": str(row_data.get('Type.1', row_data.get('Type', 'SMF'))),
+                "Warranty": str(row_data.get('Warranty', '24M')),
+                "Retail": f"{custom_retail:,.2f}",
+                "Offer_WO_VAT": str(row_data.get('Offer Without VAT', '')),
+                "VAT": str(row_data.get('VAT (15%)', '')),
+                "Special": f"{custom_special:,.2f}"
+            })
+            st.markdown("---")
 
-    st.write("---")
-    st.write("### 🎛️ Vertical Price & Specifications Adjustment (ভার্টিকাল এডিটিং প্যানেল):")
-    st.write("আপনার প্রয়োজনমতো নিচের ফিল্ডগুলোতে যেকোনো মান পরিবর্তন করতে পারবেন:")
-
-    # Vertical Layout for all specifications and pricing
-    col_v1, col_v2 = st.columns(2)
-    
-    with col_v1:
-        edit_post = st.text_input("Post", value=def_post)
-        edit_volt = st.text_input("Volt", value=def_volt)
-        edit_ah = st.text_input("AH", value=def_ah)
-        edit_plate = st.text_input("Plate", value=def_plate)
-        edit_btype = st.text_input("Type (SMF/LM)", value=def_btype)
-        edit_warranty = st.text_input("Warranty", value=def_warranty)
-
-    with col_v2:
-        edit_retail = st.number_input("Retail Price w/ VAT (MRP)", value=def_retail, step=100.0)
-        edit_offer_wo_vat = st.number_input("Offer Without VAT", value=def_offer_wo_vat, step=100.0)
-        edit_vat = st.number_input("VAT (15%)", value=def_vat, step=10.0)
-        edit_special = st.number_input("Special Offer With VAT (DP)", value=def_special, step=50.0)
-
-    st.write("---")
-    
-    if st.button("Generate Professional PDF Offer"):
+    # --- STEP 3: GENERATE PDF ---
+    if st.button("🚀 Generate Professional PDF Offer", type="primary"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
         
         if cust_matches.empty:
@@ -153,27 +165,21 @@ else:
             elements.append(Paragraph("Dear Sir, Greetings!<br/>In reference to your mail, please find price offer & warranty terms for Rahimafrooz battery to serve your requirement.", normal_style))
             elements.append(Spacer(1, 12))
             
-            elements.append(Paragraph(f"<b>Price Offer of {selected_brand} Battery:</b>", styles['Heading4']))
+            elements.append(Paragraph("<b>Price Offer Summary:</b>", styles['Heading4']))
             elements.append(Spacer(1, 5))
             
-            # Using edited values in the PDF table
+            # Table Header
             table_data = [
-                ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"],
-                [
-                    selected_brand, 
-                    selected_battery_type, 
-                    edit_post, 
-                    edit_volt, 
-                    edit_ah, 
-                    edit_plate, 
-                    edit_btype, 
-                    edit_warranty, 
-                    f"{edit_retail:,.2f}", 
-                    f"{edit_offer_wo_vat:,.2f}" if edit_offer_wo_vat > 0 else "", 
-                    f"{edit_vat:,.2f}" if edit_vat > 0 else "", 
-                    f"{edit_special:,.2f}"
-                ]
+                ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"]
             ]
+            
+            # Add all selected items dynamically to table
+            for item in selected_items:
+                table_data.append([
+                    item["Brand"], item["Type"], item["Post"], item["Volt"], item["AH"], 
+                    item["Plate"], item["Type_Sub"], item["Warranty"], item["Retail"], 
+                    item["Offer_WO_VAT"], item["VAT"], item["Special"]
+                ])
             
             t = Table(table_data, colWidths=[65, 100, 35, 30, 35, 40, 45, 55, 75, 75, 60, 85])
             t.setStyle(TableStyle([
