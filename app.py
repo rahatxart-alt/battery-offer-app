@@ -17,8 +17,23 @@ def load_data():
         xls = pd.ExcelFile('Data.xlsx')
         sheet_names = xls.sheet_names
         
-        cust_sheet = sheet_names[0] # First sheet
-        price_sheet = sheet_names[1] if len(sheet_names) > 1 else sheet_names[0] # Second sheet
+        # Check for 'address' or 'Customer' sheet, otherwise fallback to first sheet
+        cust_sheet = None
+        for name in sheet_names:
+            if 'address' in name.lower() or 'customer' in name.lower():
+                cust_sheet = name
+                break
+        if not cust_sheet:
+            cust_sheet = sheet_names[0]
+            
+        # Check for 'Price' sheet, otherwise fallback to second sheet
+        price_sheet = None
+        for name in sheet_names:
+            if 'price' in name.lower():
+                price_sheet = name
+                break
+        if not price_sheet:
+            price_sheet = sheet_names[1] if len(sheet_names) > 1 else sheet_names[0]
         
         df_cust = pd.read_excel('Data.xlsx', sheet_name=cust_sheet, header=0)
         df_price = pd.read_excel('Data.xlsx', sheet_name=price_sheet, header=0)
@@ -36,10 +51,28 @@ else:
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
     
-    # Safe column assignment (Using 1st column for Customer, Brand, Type)
-    cust_col = df_cust.columns[0]
-    brand_col = df_price.columns[0] if len(df_price.columns) > 0 else None
-    type_col = df_price.columns[1] if len(df_price.columns) > 1 else df_price.columns[0]
+    # Dynamically find Customer Name column
+    cust_col = None
+    for col in df_cust.columns:
+        if 'customer' in col.lower() or 'name' in col.lower():
+            cust_col = col
+            break
+    if not cust_col:
+        cust_col = df_cust.columns[1] if len(df_cust.columns) > 1 else df_cust.columns[0]
+        
+    # Dynamically find Brand and Type columns in Price sheet
+    brand_col = None
+    type_col = None
+    for col in df_price.columns:
+        if 'brand' in col.lower():
+            brand_col = col
+        if 'type' in col.lower() or 'model' in col.lower():
+            type_col = col
+            
+    if not brand_col:
+        brand_col = df_price.columns[1] if len(df_price.columns) > 1 else df_price.columns[0]
+    if not type_col:
+        type_col = df_price.columns[3] if len(df_price.columns) > 3 else df_price.columns[1]
     
     # Drop empty rows
     df_cust = df_cust.dropna(subset=[cust_col])
@@ -52,9 +85,6 @@ else:
     st.write("### 📋 Selection Panel:")
     
     customer_list = sorted(df_cust[cust_col].unique().tolist())
-    if not customer_list:
-        st.warning("Customerশিটে কোনো কাস্টমার নাম পাওয়া যায়নি।")
-    
     selected_customer = st.selectbox("Customer Name (Type to search):", options=customer_list if customer_list else ["No Data"])
     
     brand_list = sorted(df_price[brand_col].unique().tolist())
@@ -111,10 +141,11 @@ else:
                 elements.append(Paragraph(f"<b>Date:</b> {current_date}", normal_style))
                 elements.append(Spacer(1, 10))
                 
+                # Fetching details safely based on column availability
                 cust_name = str(cust_row.get(cust_col, ''))
-                concern_person = str(cust_row.get('Concern Person', cust_row.iloc[1] if len(cust_row) > 1 else ''))
-                contact_no = str(cust_row.get('Contact Number', cust_row.iloc[2] if len(cust_row) > 2 else ''))
-                cust_address = str(cust_row.get('Company Address', cust_row.iloc[3] if len(cust_row) > 3 else ''))
+                concern_person = str(cust_row.get('Concern Person', cust_row.iloc[2] if len(cust_row) > 2 else ''))
+                contact_no = str(cust_row.get('Contact Number', cust_row.iloc[3] if len(cust_row) > 3 else ''))
+                cust_address = str(cust_row.get('Company Address', cust_row.iloc[4] if len(cust_row) > 4 else ''))
                 
                 to_address = f"<b>To:</b><br/><b>{cust_name}</b><br/><b>Attn:</b> {concern_person} (Mob: {contact_no})<br/>{cust_address}"
                 elements.append(Paragraph(to_address, normal_style))
