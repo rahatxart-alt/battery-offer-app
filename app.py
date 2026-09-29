@@ -8,62 +8,62 @@ import io
 st.set_page_config(page_title="Battery Price Offer Generator", layout="centered")
 
 st.title("🔋 Rahimafrooz Battery Price Offer Generator")
-st.write("আপনার এক্সেল ফাইলটি আপলোড করুন (যেখানে Customer এবং Price দুটো শিটই রয়েছে)।")
+st.write("আপনার এক্সেল ফাইলটি আপলোড করুন (যেখানে Customer এবং Price শিট দুটোই রয়েছে)।")
 
 # Excel file upload field
 uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
-    # Read both sheets from Excel file
     try:
         df_cust = pd.read_excel(uploaded_file, sheet_name='Customer')
     except:
-        df_cust = pd.read_excel(uploaded_file, sheet_name=0)  # Fallback to first sheet
+        df_cust = pd.read_excel(uploaded_file, sheet_name=0)
         
     try:
         df_price = pd.read_excel(uploaded_file, sheet_name='Price')
     except:
-        df_price = pd.read_excel(uploaded_file, sheet_name=1)  # Fallback to second sheet
+        df_price = pd.read_excel(uploaded_file, sheet_name=1)
         
     st.success("এক্সেল ফাইল সফলভাবে আপলোড হয়েছে!")
     
-    # Selection options in web interface
+    # Clean column names (strip extra spaces if any)
+    df_cust.columns = df_cust.columns.str.strip()
+    df_price.columns = df_price.columns.str.strip()
+    
+    # Identify proper column names safely
+    cust_col = 'Customer Name' if 'Customer Name' in df_cust.columns else df_cust.columns[1]
+    brand_col = 'Brand' if 'Brand' in df_price.columns else df_price.columns[1]
+    type_col = 'Type' if 'Type' in df_price.columns else df_price.columns[3]
+    
     st.write("### কাস্টমার ও ব্যাটারি সিলেক্ট করুন:")
-    customer_list = df_cust['Customer Name'].unique().tolist()
+    customer_list = df_cust[cust_col].dropna().unique().tolist()
     selected_customer = st.selectbox("কাস্টমার সিলেক্ট করুন:", customer_list)
     
-    brand_list = df_price['Brand'].unique().tolist()
+    brand_list = df_price[brand_col].dropna().unique().tolist()
     selected_brand = st.selectbox("ব্র্যান্ড সিলেক্ট করুন:", brand_list)
     
-    # Filter batteries based on selected brand
-    filtered_batteries = df_price[df_price['Brand'] == selected_brand]
-    selected_battery_type = st.selectbox("ব্যাটারি টাইপ সিলেক্ট করুন:", filtered_batteries['Type'].tolist())
+    filtered_batteries = df_price[df_price[brand_col] == selected_brand]
+    selected_battery_type = st.selectbox("ব্যাটারি টাইপ সিলেক্ট করুন:", filtered_batteries[type_col].dropna().astype(str).tolist())
     
     if st.button("Generate PDF Offer"):
-        # Get customer row data
-        cust_row = df_cust[df_cust['Customer Name'] == selected_customer].iloc[0]
-        
-        # Get battery row data
-        bat_row = filtered_batteries[filtered_batteries['Type'] == selected_battery_type].iloc[0]
+        cust_row = df_cust[df_cust[cust_col] == selected_customer].iloc[0]
+        bat_row = filtered_batteries[filtered_batteries[type_col].astype(str) == selected_battery_type].iloc[0]
             
-        # PDF generation memory buffer
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
         elements = []
         
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import getSampleStyleSheet
         styles = getSampleStyleSheet()
         
-        # Header Info
         elements.append(Paragraph("<b>RAHIMAFROOZ BATTERIES LIMITED</b>", styles['Heading1']))
         elements.append(Paragraph("Business Office: 705 Nakhalpara, Tejgaon, Dhaka 1215", styles['Normal']))
         elements.append(Spacer(1, 10))
         
-        # Customer & Concern Details
-        cust_name = cust_row.get('Customer Name', '')
-        concern_person = cust_row.get('Concern Person', '')
-        contact_no = cust_row.get('Contact Number', '')
-        cust_address = cust_row.get('Company Address', '')
+        cust_name = str(cust_row.get(cust_col, ''))
+        concern_person = str(cust_row.get('Concern Person', ''))
+        contact_no = str(cust_row.get('Contact Number', ''))
+        cust_address = str(cust_row.get('Company Address', ''))
         
         elements.append(Paragraph("<b>Ref:</b> RBL/CS/ACI/26-27/290926", styles['Normal']))
         elements.append(Paragraph("<b>Date:</b> 29-Sep-2026", styles['Normal']))
@@ -77,20 +77,27 @@ if uploaded_file is not None:
         elements.append(Paragraph("Dear Sir, Greetings!<br/>In reference to your mail, please find price offer & warranty terms for Rahimafrooz battery to serve your requirement.", styles['Normal']))
         elements.append(Spacer(1, 15))
         
-        # Dynamic Table Data Section from Price Sheet
         elements.append(Paragraph(f"<b>Price Offer of {selected_brand} Battery:</b>", styles['Heading4']))
+        
+        # Dynamic extraction from Price sheet columns
+        volt_val = bat_row.get('Volt', '12')
+        ah_val = bat_row.get('AH', '')
+        plate_val = bat_row.get('Plate', '')
+        retail_price = bat_row.get('Retail price with VAT', '')
+        special_price = bat_row.get('Special Offer With VAT', '')
+        vat_val = bat_row.get('VAT (15%)', '')
         
         table_data = [
             ["SL", "Type", "Volt", "AH", "Plate", "Retail price with VAT", "Special Offer With VAT", "VAT (15%)"],
             [
                 str(bat_row.get('SL', 1)),
-                str(bat_row.get('Type', '')),
-                str(bat_row.get('Volt', '')),
-                str(bat_row.get('AH', '')),
-                str(bat_row.get('Plate', '')),
-                str(bat_row.get('Retail price with VAT', '')),
-                str(bat_row.get('Special Offer With VAT', '')),
-                str(bat_row.get('VAT (15%)', ''))
+                str(selected_battery_type),
+                str(volt_val),
+                str(ah_val),
+                str(plate_val),
+                str(retail_price),
+                str(special_price),
+                str(vat_val)
             ]
         ]
         
@@ -106,7 +113,6 @@ if uploaded_file is not None:
         elements.append(t)
         elements.append(Spacer(1, 15))
         
-        # Terms and conditions
         elements.append(Paragraph("<b>Terms & Conditions:</b>", styles['Heading4']))
         terms_text = """
         • Price Validity: 15 Days.<br/>
