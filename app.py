@@ -6,7 +6,7 @@ from reportlab.lib import colors
 import io
 import datetime
 
-st.set_page_config(page_title="Rahimafrooz Offer Generator", layout="centered")
+st.set_page_config(page_title="Rahimafrooz Offer Generator", layout="wide")
 
 @st.cache_data
 def load_data():
@@ -77,16 +77,18 @@ else:
         except:
             return default
 
+    # Single Row Layout for each item using columns
     for i in range(st.session_state.compact_items):
-        st.markdown(f"**Item #{i+1} Details:**")
+        cols = st.columns([2, 2.2, 0.8, 0.8, 0.8, 0.9, 1, 1, 1.2, 1.4])
         
-        # 1-Column vertical stacked layout
-        b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
+        with cols[0]:
+            b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
         
         filtered_bats = df_price[df_price[brand_col] == b_brand]
         bat_types = sorted(filtered_bats[type_col].unique().tolist())
         
-        b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
+        with cols[1]:
+            b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
             
         row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
         
@@ -101,14 +103,22 @@ else:
         if def_special == 0:
             def_special = def_retail
 
-        c_post = st.text_input(f"Post #{i+1}", value=def_post, key=f"post_{i}")
-        c_volt = st.text_input(f"Volt #{i+1}", value=def_volt, key=f"volt_{i}")
-        c_ah = st.text_input(f"AH #{i+1}", value=def_ah, key=f"ah_{i}")
-        c_plate = st.text_input(f"Plate #{i+1}", value=def_plate, key=f"plate_{i}")
-        c_btype = st.text_input(f"Type (SMF) #{i+1}", value=def_btype, key=f"btype_{i}")
-        c_warranty = st.text_input(f"Warranty #{i+1}", value=def_warranty, key=f"warr_{i}")
-        c_retail = st.number_input(f"Retail w/VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
-        c_special = st.number_input(f"Special Offer (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
+        with cols[2]:
+            c_post = st.text_input(f"Post #{i+1}", value=def_post, key=f"post_{i}")
+        with cols[3]:
+            c_volt = st.text_input(f"Volt #{i+1}", value=def_volt, key=f"volt_{i}")
+        with cols[4]:
+            c_ah = st.text_input(f"AH #{i+1}", value=def_ah, key=f"ah_{i}")
+        with cols[5]:
+            c_plate = st.text_input(f"Plate #{i+1}", value=def_plate, key=f"plate_{i}")
+        with cols[6]:
+            c_btype = st.text_input(f"Type #{i+1}", value=def_btype, key=f"btype_{i}")
+        with cols[7]:
+            c_warranty = st.text_input(f"Warr #{i+1}", value=def_warranty, key=f"warr_{i}")
+        with cols[8]:
+            c_retail = st.number_input(f"Retail #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
+        with cols[9]:
+            c_special = st.number_input(f"DP #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
             
         selected_items.append({
             "Brand": b_brand,
@@ -124,7 +134,8 @@ else:
             "VAT": str(row_data.get('VAT (15%)', '')),
             "Special": f"{c_special:,.2f}"
         })
-        st.markdown("---")
+
+    st.markdown("---")
 
     if st.button("🚀 Generate Professional PDF Offer", type="primary"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
