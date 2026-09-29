@@ -6,10 +6,10 @@ from reportlab.lib import colors
 import io
 import datetime
 
-st.set_page_config(page_title="Rahimafrooz Smart Price Offer Generator", layout="centered")
+st.set_page_config(page_title="Rahimafrooz Offer Generator", layout="centered")
 
 st.title("🔋 Rahimafrooz Professional Offer Generator")
-st.write("সহজে কাস্টমার সিলেক্ট করুন এবং **একাধিক ব্যাটারি** যোগ করে প্রফেশনাল অফার লেটার তৈরি করুন!")
+st.write("Ekdom compact ebong easy interface. Customer select korun ebong battery items add kore instant PDF download korun!")
 
 @st.cache_data
 def load_data():
@@ -24,7 +24,7 @@ def load_data():
 df_cust, df_price = load_data()
 
 if df_cust is None or df_price is None:
-    st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হয়নি। অনুগ্রহ করে ফাইলটি চেক করুন।")
+    st.error("Data.xlsx file read korte somoshya hocche.")
 else:
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
@@ -43,34 +43,32 @@ else:
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
-    # --- STEP 1: CUSTOMER SELECTION ---
-    st.markdown("### 👤 Step 1: Customer Selection")
+    # --- COMPACT CUSTOMER SECTION ---
     customer_list = sorted(df_cust[cust_col].unique().tolist())
-    selected_customer = st.selectbox("Customer Name (টাইপ করে সার্চ করতে পারেন):", options=customer_list, key="main_cust")
+    selected_customer = st.selectbox("👤 Select Customer Name:", options=customer_list)
     
-    # --- STEP 2: MULTIPLE BATTERY ITEMS SELECTION ---
     st.markdown("---")
-    st.markdown("### 🔋 Step 2: Add Battery Items (একাধিক ব্যাটারি যোগ করুন)")
+    st.markdown("### 🔋 Battery Items Selection (Compact View)")
     
-    if 'item_count' not in st.session_state:
-        st.session_state.item_count = 1
+    if 'compact_items' not in st.session_state:
+        st.session_state.compact_items = 1
 
-    def add_item():
-        st.session_state.item_count += 1
+    def add_row():
+        st.session_state.compact_items += 1
 
-    def remove_item():
-        if st.session_state.item_count > 1:
-            st.session_state.item_count -= 1
+    def remove_row():
+        if st.session_state.compact_items > 1:
+            st.session_state.compact_items -= 1
 
-    col_btn1, col_btn2 = st.columns([1, 4])
-    with col_btn1:
-        st.button("➕ Add Battery", on_click=add_item)
-    with col_btn2:
-        if st.session_state.item_count > 1:
-            st.button("➖ Remove Last", on_click=remove_item)
+    col_b1, col_b2 = st.columns([1, 1])
+    with col_b1:
+        st.button("➕ Add Row", on_click=add_row)
+    with col_b2:
+        if st.session_state.compact_items > 1:
+            st.button("➖ Remove Row", on_click=remove_row)
 
-    selected_items = []
     brand_list = sorted(df_price[brand_col].unique().tolist())
+    selected_items = []
 
     def clean_num(val):
         try:
@@ -78,56 +76,47 @@ else:
         except:
             return 0.0
 
-    for i in range(st.session_state.item_count):
-        with st.container():
-            st.markdown(f"**Item #{i+1}**")
-            c1, c2 = st.columns(2)
+    # Render compact rows
+    for i in range(st.session_state.compact_items):
+        cols = st.columns([2, 2, 1.5])
+        
+        with cols[0]:
+            b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
+        
+        filtered_bats = df_price[df_price[brand_col] == b_brand]
+        bat_types = sorted(filtered_bats[type_col].unique().tolist())
+        
+        with cols[1]:
+            b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
             
-            with c1:
-                b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"brand_{i}")
+        row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
+        def_special = clean_num(row_data.get('Special Offer With VAT', row_data.get('Retail price with VAT', 0)))
+        
+        with cols[2]:
+            custom_price = st.number_input(f"Price (DP) #{i+1}", value=def_special, step=50.0, key=f"c_price_{i}")
             
-            filtered_bats = df_price[df_price[brand_col] == b_brand]
-            bat_types = sorted(filtered_bats[type_col].unique().tolist())
-            
-            with c2:
-                b_type = st.selectbox(f"Battery Type #{i+1}", options=bat_types, key=f"type_{i}")
-            
-            # Fetch default row data
-            row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
-            
-            def_retail = clean_num(row_data.get('Retail price with VAT', 0))
-            def_special = clean_num(row_data.get('Special Offer With VAT', def_retail))
-            if def_special == 0:
-                def_special = def_retail
-                
-            c3, c4 = st.columns(2)
-            with c3:
-                custom_retail = st.number_input(f"Retail Price w/ VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
-            with c4:
-                custom_special = st.number_input(f"Special Offer With VAT (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
-            
-            selected_items.append({
-                "Brand": b_brand,
-                "Type": b_type,
-                "Post": str(row_data.get('Post', 'I')),
-                "Volt": str(row_data.get('Volt', '12')),
-                "AH": str(row_data.get('AH', '')),
-                "Plate": str(row_data.get('Plate', 'N/A')),
-                "Type_Sub": str(row_data.get('Type.1', row_data.get('Type', 'SMF'))),
-                "Warranty": str(row_data.get('Warranty', '24M')),
-                "Retail": f"{custom_retail:,.2f}",
-                "Offer_WO_VAT": str(row_data.get('Offer Without VAT', '')),
-                "VAT": str(row_data.get('VAT (15%)', '')),
-                "Special": f"{custom_special:,.2f}"
-            })
-            st.markdown("---")
+        selected_items.append({
+            "Brand": b_brand,
+            "Type": b_type,
+            "Post": str(row_data.get('Post', 'I')),
+            "Volt": str(row_data.get('Volt', '12')),
+            "AH": str(row_data.get('AH', '')),
+            "Plate": str(row_data.get('Plate', 'N/A')),
+            "Type_Sub": str(row_data.get('Type.1', row_data.get('Type', 'SMF'))),
+            "Warranty": str(row_data.get('Warranty', '24M')),
+            "Retail": f"{clean_num(row_data.get('Retail price with VAT', 0)):,.2f}",
+            "Offer_WO_VAT": str(row_data.get('Offer Without VAT', '')),
+            "VAT": str(row_data.get('VAT (15%)', '')),
+            "Special": f"{custom_price:,.2f}"
+        })
 
-    # --- STEP 3: GENERATE PDF ---
+    st.markdown("---")
+    
     if st.button("🚀 Generate Professional PDF Offer", type="primary"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
         
         if cust_matches.empty:
-            st.error("নির্বাচিত কাস্টমার ডেটাবেজে পাওয়া যায়নি।")
+            st.error("Nirbachito customer paowa jayni.")
         else:
             cust_row = cust_matches.iloc[0]
                 
@@ -168,12 +157,10 @@ else:
             elements.append(Paragraph("<b>Price Offer Summary:</b>", styles['Heading4']))
             elements.append(Spacer(1, 5))
             
-            # Table Header
             table_data = [
                 ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"]
             ]
             
-            # Add all selected items dynamically to table
             for item in selected_items:
                 table_data.append([
                     item["Brand"], item["Type"], item["Post"], item["Volt"], item["AH"], 
@@ -215,7 +202,7 @@ else:
             doc.build(elements)
             buffer.seek(0)
             
-            st.success("প্রফেশনাল পিডিএফ সফলভাবে তৈরি হয়েছে!")
+            st.success("Professional PDF successfully toiri hoyeche!")
             st.download_button(
                 label="📥 Download Professional PDF Offer",
                 data=buffer,
