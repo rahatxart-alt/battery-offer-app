@@ -9,7 +9,7 @@ import datetime
 st.set_page_config(page_title="Rahimafrooz Smart Price Offer Generator", layout="centered")
 
 st.title("🔋 Rahimafrooz Smart Price Offer Generator")
-st.write("Customer ebong Battery select korun. MRP ebong Price automatically show korbe, apni proyojonmoto komate parben!")
+st.write("কাস্টমার ও ব্যাটারি সিলেক্ট করুন। নিচের ফিল্ডগুলো থেকে যেকোনো মূল্য বা তথ্য পরিবর্তন করতে পারবেন!")
 
 @st.cache_data
 def load_data():
@@ -24,7 +24,7 @@ def load_data():
 df_cust, df_price = load_data()
 
 if df_cust is None or df_price is None:
-    st.error("Data.xlsx file read korte somoshya hocche.")
+    st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হয়নি।")
 else:
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
@@ -43,7 +43,7 @@ else:
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
-    st.write("### 📋 Selection & Price Customization Panel:")
+    st.write("### 📋 Selection Panel:")
     
     customer_list = sorted(df_cust[cust_col].unique().tolist())
     selected_customer = st.selectbox("Customer Name (Type to search):", options=customer_list)
@@ -56,39 +56,66 @@ else:
     
     selected_battery_type = st.selectbox("Battery Type (Type to search):", options=battery_types)
     
-    # Fetch exact row and prices safely
+    # Fetch exact row for selected battery
     bat_row = filtered_batteries[filtered_batteries[type_col] == selected_battery_type].iloc[0]
     
-    # Extract MRP and Default Special Price safely
-    def clean_price(val):
+    def clean_val(val, default=""):
+        try:
+            if pd.isna(val):
+                return default
+            return str(val).strip()
+        except:
+            return default
+
+    def clean_num(val):
         try:
             return float(str(val).replace(',', '').strip())
         except:
             return 0.0
 
-    mrp_val = bat_row.get('Retail price with VAT', 0)
-    default_special = bat_row.get('Special Offer With VAT', 0)
+    # Extract default values from excel
+    def_post = clean_val(bat_row.get('Post', 'I'), 'I')
+    def_volt = clean_val(bat_row.get('Volt', '12'), '12')
+    def_ah = clean_val(bat_row.get('AH', ''), '')
+    def_plate = clean_val(bat_row.get('Plate', 'N/A'), 'N/A')
+    def_btype = clean_val(bat_row.get('Type.1', bat_row.get('Type', 'SMF')), 'SMF')
+    def_warranty = clean_val(bat_row.get('Warranty', '24M'), '24M')
     
-    mrp_float = clean_price(mrp_val)
-    default_special_float = clean_price(default_special)
-    if default_special_float == 0:
-        default_special_float = mrp_float
+    def_retail = clean_num(bat_row.get('Retail price with VAT', 0))
+    def_offer_wo_vat = clean_num(bat_row.get('Offer Without VAT', 0))
+    def_vat = clean_num(bat_row.get('VAT (15%)', 0))
+    def_special = clean_num(bat_row.get('Special Offer With VAT', 0))
+    if def_special == 0:
+        def_special = def_retail
 
     st.write("---")
-    st.write("### 💰 Price Details & Adjustment:")
-    st.info(f"🏷️ **MRP (Retail Price with VAT):** ৳ {mrp_float:,.2f}")
+    st.write("### 🎛️ Vertical Price & Specifications Adjustment (ভার্টিকাল এডিটিং প্যানেল):")
+    st.write("আপনার প্রয়োজনমতো নিচের ফিল্ডগুলোতে যেকোনো মান পরিবর্তন করতে পারবেন:")
+
+    # Vertical Layout for all specifications and pricing
+    col_v1, col_v2 = st.columns(2)
     
-    custom_special_price = st.number_input(
-        "Special Offer With VAT / DP (Apni ekhane icchamoto price komiye ba bariye dite paren):", 
-        value=default_special_float, 
-        step=50.0
-    )
+    with col_v1:
+        edit_post = st.text_input("Post", value=def_post)
+        edit_volt = st.text_input("Volt", value=def_volt)
+        edit_ah = st.text_input("AH", value=def_ah)
+        edit_plate = st.text_input("Plate", value=def_plate)
+        edit_btype = st.text_input("Type (SMF/LM)", value=def_btype)
+        edit_warranty = st.text_input("Warranty", value=def_warranty)
+
+    with col_v2:
+        edit_retail = st.number_input("Retail Price w/ VAT (MRP)", value=def_retail, step=100.0)
+        edit_offer_wo_vat = st.number_input("Offer Without VAT", value=def_offer_wo_vat, step=100.0)
+        edit_vat = st.number_input("VAT (15%)", value=def_vat, step=10.0)
+        edit_special = st.number_input("Special Offer With VAT (DP)", value=def_special, step=50.0)
+
+    st.write("---")
     
     if st.button("Generate Professional PDF Offer"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
         
         if cust_matches.empty:
-            st.error("Nirbachito customer database-e paowa jayni.")
+            st.error("নির্বাচিত কাস্টমার ডেটাবেজে পাওয়া যায়নি।")
         else:
             cust_row = cust_matches.iloc[0]
                 
@@ -129,22 +156,23 @@ else:
             elements.append(Paragraph(f"<b>Price Offer of {selected_brand} Battery:</b>", styles['Heading4']))
             elements.append(Spacer(1, 5))
             
-            brand_val = str(bat_row.get('Brand', selected_brand))
-            type_val = str(bat_row.get('Type', selected_battery_type))
-            post_val = str(bat_row.get('Post', 'I'))
-            volt_val = str(bat_row.get('Volt', '12'))
-            ah_val = str(bat_row.get('AH', ''))
-            plate_val = str(bat_row.get('Plate', 'N/A'))
-            bat_type_col = str(bat_row.get('Type.1', bat_row.get('Type', 'SMF')))
-            warranty_val = str(bat_row.get('Warranty', '24M'))
-            retail_price = f"{mrp_float:,.2f}"
-            offer_wo_vat = str(bat_row.get('Offer Without VAT', ''))
-            vat_val = str(bat_row.get('VAT (15%)', ''))
-            formatted_special_price = f"{custom_special_price:,.2f}"
-            
+            # Using edited values in the PDF table
             table_data = [
                 ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"],
-                [brand_val, type_val, post_val, volt_val, ah_val, plate_val, bat_type_col, warranty_val, retail_price, str(offer_wo_vat), str(vat_val), formatted_special_price]
+                [
+                    selected_brand, 
+                    selected_battery_type, 
+                    edit_post, 
+                    edit_volt, 
+                    edit_ah, 
+                    edit_plate, 
+                    edit_btype, 
+                    edit_warranty, 
+                    f"{edit_retail:,.2f}", 
+                    f"{edit_offer_wo_vat:,.2f}" if edit_offer_wo_vat > 0 else "", 
+                    f"{edit_vat:,.2f}" if edit_vat > 0 else "", 
+                    f"{edit_special:,.2f}"
+                ]
             ]
             
             t = Table(table_data, colWidths=[65, 100, 35, 30, 35, 40, 45, 55, 75, 75, 60, 85])
@@ -181,7 +209,7 @@ else:
             doc.build(elements)
             buffer.seek(0)
             
-            st.success("Professional PDF successfully toiri hoyeche!")
+            st.success("প্রফেশনাল পিডিএফ সফলভাবে তৈরি হয়েছে!")
             st.download_button(
                 label="📥 Download Professional PDF Offer",
                 data=buffer,
