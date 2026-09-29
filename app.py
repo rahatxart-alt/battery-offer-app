@@ -79,28 +79,19 @@ else:
 
     for i in range(st.session_state.compact_items):
         st.markdown(f"**Item #{i+1} Details:**")
-        cols1 = st.columns([2, 2, 1, 1])
         
-        with cols1[0]:
-            b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
+        # 1-Column vertical stacked layout
+        b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
         
         filtered_bats = df_price[df_price[brand_col] == b_brand]
         bat_types = sorted(filtered_bats[type_col].unique().tolist())
         
-        with cols1[1]:
-            b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
+        b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
             
         row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
         
         def_post = clean_val(row_data.get('Post', 'I'), 'I')
         def_volt = clean_val(row_data.get('Volt', '12'), '12')
-        
-        with cols1[2]:
-            c_post = st.text_input(f"Post #{i+1}", value=def_post, key=f"post_{i}")
-        with cols1[3]:
-            c_volt = st.text_input(f"Volt #{i+1}", value=def_volt, key=f"volt_{i}")
-
-        cols2 = st.columns([1, 1, 1, 1, 1, 1.5])
         def_ah = clean_val(row_data.get('AH', ''), '')
         def_plate = clean_val(row_data.get('Plate', 'N/A'), 'N/A')
         def_btype = clean_val(row_data.get('Type.1', row_data.get('Type', 'SMF')), 'SMF')
@@ -110,18 +101,14 @@ else:
         if def_special == 0:
             def_special = def_retail
 
-        with cols2[0]:
-            c_ah = st.text_input(f"AH #{i+1}", value=def_ah, key=f"ah_{i}")
-        with cols2[1]:
-            c_plate = st.text_input(f"Plate #{i+1}", value=def_plate, key=f"plate_{i}")
-        with cols2[2]:
-            c_btype = st.text_input(f"Type(SMF) #{i+1}", value=def_btype, key=f"btype_{i}")
-        with cols2[3]:
-            c_warranty = st.text_input(f"Warranty #{i+1}", value=def_warranty, key=f"warr_{i}")
-        with cols2[4]:
-            c_retail = st.number_input(f"Retail w/VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
-        with cols2[5]:
-            c_special = st.number_input(f"Special Offer (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
+        c_post = st.text_input(f"Post #{i+1}", value=def_post, key=f"post_{i}")
+        c_volt = st.text_input(f"Volt #{i+1}", value=def_volt, key=f"volt_{i}")
+        c_ah = st.text_input(f"AH #{i+1}", value=def_ah, key=f"ah_{i}")
+        c_plate = st.text_input(f"Plate #{i+1}", value=def_plate, key=f"plate_{i}")
+        c_btype = st.text_input(f"Type (SMF) #{i+1}", value=def_btype, key=f"btype_{i}")
+        c_warranty = st.text_input(f"Warranty #{i+1}", value=def_warranty, key=f"warr_{i}")
+        c_retail = st.number_input(f"Retail w/VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
+        c_special = st.number_input(f"Special Offer (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
             
         selected_items.append({
             "Brand": b_brand,
