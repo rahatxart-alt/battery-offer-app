@@ -40,7 +40,6 @@ else:
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
-    # Compact Customer Section
     customer_list = sorted(df_cust[cust_col].unique().tolist())
     selected_customer = st.selectbox("Select Customer Name:", options=customer_list)
     
@@ -70,41 +69,76 @@ else:
         except:
             return 0.0
 
+    def clean_val(val, default=""):
+        try:
+            if pd.isna(val):
+                return default
+            return str(val).strip()
+        except:
+            return default
+
     for i in range(st.session_state.compact_items):
-        cols = st.columns([2, 2, 1.5])
+        st.markdown(f"**Item #{i+1} Details:**")
+        cols1 = st.columns([2, 2, 1, 1])
         
-        with cols[0]:
+        with cols1[0]:
             b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
         
         filtered_bats = df_price[df_price[brand_col] == b_brand]
         bat_types = sorted(filtered_bats[type_col].unique().tolist())
         
-        with cols[1]:
+        with cols1[1]:
             b_type = st.selectbox(f"Type #{i+1}", options=bat_types, key=f"c_type_{i}")
             
         row_data = filtered_bats[filtered_bats[type_col] == b_type].iloc[0]
-        def_special = clean_num(row_data.get('Special Offer With VAT', row_data.get('Retail price with VAT', 0)))
         
-        with cols[2]:
-            custom_price = st.number_input(f"Price (DP) #{i+1}", value=def_special, step=50.0, key=f"c_price_{i}")
+        def_post = clean_val(row_data.get('Post', 'I'), 'I')
+        def_volt = clean_val(row_data.get('Volt', '12'), '12')
+        
+        with cols1[2]:
+            c_post = st.text_input(f"Post #{i+1}", value=def_post, key=f"post_{i}")
+        with cols1[3]:
+            c_volt = st.text_input(f"Volt #{i+1}", value=def_volt, key=f"volt_{i}")
+
+        cols2 = st.columns([1, 1, 1, 1, 1, 1.5])
+        def_ah = clean_val(row_data.get('AH', ''), '')
+        def_plate = clean_val(row_data.get('Plate', 'N/A'), 'N/A')
+        def_btype = clean_val(row_data.get('Type.1', row_data.get('Type', 'SMF')), 'SMF')
+        def_warranty = clean_val(row_data.get('Warranty', '24M'), '24M')
+        def_retail = clean_num(row_data.get('Retail price with VAT', 0))
+        def_special = clean_num(row_data.get('Special Offer With VAT', def_retail))
+        if def_special == 0:
+            def_special = def_retail
+
+        with cols2[0]:
+            c_ah = st.text_input(f"AH #{i+1}", value=def_ah, key=f"ah_{i}")
+        with cols2[1]:
+            c_plate = st.text_input(f"Plate #{i+1}", value=def_plate, key=f"plate_{i}")
+        with cols2[2]:
+            c_btype = st.text_input(f"Type(SMF) #{i+1}", value=def_btype, key=f"btype_{i}")
+        with cols2[3]:
+            c_warranty = st.text_input(f"Warranty #{i+1}", value=def_warranty, key=f"warr_{i}")
+        with cols2[4]:
+            c_retail = st.number_input(f"Retail w/VAT #{i+1}", value=def_retail, step=100.0, key=f"ret_{i}")
+        with cols2[5]:
+            c_special = st.number_input(f"Special Offer (DP) #{i+1}", value=def_special, step=50.0, key=f"sp_{i}")
             
         selected_items.append({
             "Brand": b_brand,
             "Type": b_type,
-            "Post": str(row_data.get('Post', 'I')),
-            "Volt": str(row_data.get('Volt', '12')),
-            "AH": str(row_data.get('AH', '')),
-            "Plate": str(row_data.get('Plate', 'N/A')),
-            "Type_Sub": str(row_data.get('Type.1', row_data.get('Type', 'SMF'))),
-            "Warranty": str(row_data.get('Warranty', '24M')),
-            "Retail": f"{clean_num(row_data.get('Retail price with VAT', 0)):,.2f}",
+            "Post": c_post,
+            "Volt": c_volt,
+            "AH": c_ah,
+            "Plate": c_plate,
+            "Type_Sub": c_btype,
+            "Warranty": c_warranty,
+            "Retail": f"{c_retail:,.2f}",
             "Offer_WO_VAT": str(row_data.get('Offer Without VAT', '')),
             "VAT": str(row_data.get('VAT (15%)', '')),
-            "Special": f"{custom_price:,.2f}"
+            "Special": f"{c_special:,.2f}"
         })
+        st.markdown("---")
 
-    st.markdown("---")
-    
     if st.button("🚀 Generate Professional PDF Offer", type="primary"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
         
