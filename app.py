@@ -43,7 +43,6 @@ else:
     customer_list = sorted(df_cust[cust_col].unique().tolist())
     selected_customer = st.selectbox("Select Customer Name:", options=customer_list)
     
-    # Show Selected Customer Info instantly on screen
     cust_row = df_cust[df_cust[cust_col] == selected_customer].iloc[0]
     c_name = str(cust_row.get('Customer Name', ''))
     c_attn = str(cust_row.get('Concern Person', ''))
@@ -143,6 +142,10 @@ else:
         with cols[9]:
             c_special = st.number_input(f"DP #{i+1}", step=50.0, key=f"sp_{i}")
             
+        # Automatic Calculation for Offer Without VAT and VAT (15%) based on Special Offer (DP)
+        calc_offer_wo_vat = c_special / 1.15
+        calc_vat = c_special - calc_offer_wo_vat
+            
         selected_items.append({
             "Brand": b_brand,
             "Type": b_type,
@@ -153,8 +156,8 @@ else:
             "Type_Sub": c_btype,
             "Warranty": c_warranty,
             "Retail": f"{c_retail:,.2f}",
-            "Offer_WO_VAT": str(row_data.get('Offer Without VAT', '')),
-            "VAT": str(row_data.get('VAT (15%)', '')),
+            "Offer_WO_VAT": f"{calc_offer_wo_vat:,.2f}",
+            "VAT": f"{calc_vat:,.2f}",
             "Special": f"{c_special:,.2f}"
         })
 
