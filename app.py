@@ -4,52 +4,58 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
+import datetime
 
-st.set_page_config(page_title="Rahimafrooz Professional Offer Generator", layout="centered")
+st.set_page_config(page_title="Rahimafrooz Permanent Offer Generator", layout="centered")
 
-st.title("🔋 Rahimafrooz Advanced Price Offer Generator")
-st.write("আপনার এক্সেল ফাইলটি আপলোড করুন (যেখানে Customer এবং Price শিট দুটোই সঠিকভাবে রয়েছে)।")
+st.title("🔋 Rahimafrooz Smart Price Offer Generator")
+st.write("Data auto-loaded from system. Shudhu customer ebong battery select korun!")
 
-# Excel file upload field
-uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"])
-
-if uploaded_file is not None:
+@st.cache_data
+def load_data():
     try:
-        # Read Excel sheets with proper header row
-        df_cust = pd.read_excel(uploaded_file, sheet_name='Customer', header=0)
-        df_price = pd.read_excel(uploaded_file, sheet_name='Price', header=0)
+        df_cust = pd.read_excel('Data.xlsx', sheet_name='Customer', header=0)
+        df_price = pd.read_excel('Data.xlsx', sheet_name='Price', header=0)
+        return df_cust, df_price
     except Exception as e:
-        st.error(f"এক্সেল ফাইল পড়তে সমস্যা হয়েছে: {e}")
-        st.stop()
-        
-    st.success("এক্সেল ফাইল সফলভাবে এবং সঠিকভাবে লোড হয়েছে!")
+        return None, None
+
+df_cust, df_price = load_data()
+
+if df_cust is None or df_price is None:
+    st.error("Data.xlsx file-ti github repository-te 'app.py' er sathe upload kora nei! Onugroho kore Data.xlsx file-ti upload korun.")
+else:
+    df_cust.columns = df_cust.columns.astype(str).str.strip()
+    df_price.columns = df_price.columns.astype(str).str.strip()
     
-    # Clean column names
-    df_cust.columns = df_cust.columns.str.strip()
-    df_price.columns = df_price.columns.str.strip()
+    # Auto-detect correct column names safely
+    cust_col = next((col for col in df_cust.columns if 'customer' in col.lower() or 'name' in col.lower()), df_cust.columns[0])
+    brand_col = next((col for col in df_price.columns if 'brand' in col.lower()), df_price.columns[0])
+    type_col = next((col for col in df_price.columns if 'type' in col.lower() or 'model' in col.lower()), df_price.columns[1])
     
-    # Drop rows where essential columns are NaN
-    df_cust = df_cust.dropna(subset=['Customer Name'])
-    df_price = df_price.dropna(subset=['Brand', 'Type'])
+    df_cust = df_cust.dropna(subset=[cust_col])
+    df_price = df_price.dropna(subset=[brand_col, type_col])
     
-    # Selection interface
-    st.write("### 📋 কাস্টমার ও ব্যাটারি তথ্য নির্বাচন করুন:")
+    st.write("### 📋 Selection Panel:")
     
-    customer_list = df_cust['Customer Name'].tolist()
-    selected_customer = st.selectbox("কাস্টমার সিলেক্ট করুন:", customer_list)
+    customer_list = df_cust[cust_col].tolist()
+    selected_customer = st.selectbox("Customer Name (Type to search):", customer_list, index=0)
     
-    brand_list = df_price['Brand'].unique().tolist()
-    selected_brand = st.selectbox("ব্যাটারি ব্র্যান্ড সিলেক্ট করুন:", brand_list)
+    brand_list = df_price[brand_col].unique().tolist()
+    selected_brand = st.selectbox("Select Battery Brand:", brand_list)
     
-    filtered_batteries = df_price[df_price['Brand'] == selected_brand]
-    selected_battery_type = st.selectbox("ব্যাটারি টাইপ সিলেক্ট করুন:", filtered_batteries['Type'].tolist())
+    filtered_batteries = df_price[df_price[brand_col] == selected_brand]
+    battery_types = filtered_batteries[type_col].tolist()
+    
+    selected_battery_type = st.selectbox("Battery Type (Type to search):", battery_types)
     
     if st.button("Generate Professional PDF Offer"):
-        # Fetch specific rows
-        cust_row = df_cust[df_cust['Customer Name'] == selected_customer].iloc[0]
-        bat_row = filtered_batteries[filtered_batteries['Type'] == selected_battery_type].iloc[0]
+        cust_row = df_cust[df_cust[cust_col] == selected_customer].iloc[0]
+        bat_row = filtered_batteries[filtered_batteries[type_col] == selected_battery_type].iloc[0]
             
-        # PDF generation buffer
+        current_date = datetime.date.today().strftime("%d-%b-%Y")
+        ref_no = f"RBL/CS/ACI/26-27/{datetime.date.today().strftime('%d%m%y')}"
+            
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=35, leftMargin=35, topMargin=35, bottomMargin=35)
         elements = []
@@ -57,7 +63,6 @@ if uploaded_file is not None:
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         styles = getSampleStyleSheet()
         
-        # Custom styles
         title_style = ParagraphStyle(
             'TitleStyle',
             parent=styles['Heading1'],
@@ -73,18 +78,15 @@ if uploaded_file is not None:
             leading=14
         )
 
-        # Header Info
         elements.append(Paragraph("<b>RAHIMAFROOZ BATTERIES LIMITED</b>", title_style))
         elements.append(Paragraph("Business Office: 705 Nakhalpara, Tejgaon, Dhaka 1215 | Tel: 02-9113696", normal_style))
         elements.append(Spacer(1, 10))
         
-        # Reference and Date
-        elements.append(Paragraph("<b>Ref:</b> RBL/CS/ACI/26-27/290926", normal_style))
-        elements.append(Paragraph("<b>Date:</b> 29-Sep-2026", normal_style))
+        elements.append(Paragraph(f"<b>Ref:</b> {ref_no}", normal_style))
+        elements.append(Paragraph(f"<b>Date:</b> {current_date}", normal_style))
         elements.append(Spacer(1, 10))
         
-        # Customer Details Block
-        cust_name = str(cust_row.get('Customer Name', ''))
+        cust_name = str(cust_row.get(cust_col, ''))
         concern_person = str(cust_row.get('Concern Person', ''))
         contact_no = str(cust_row.get('Contact Number', ''))
         cust_address = str(cust_row.get('Company Address', ''))
@@ -93,18 +95,15 @@ if uploaded_file is not None:
         elements.append(Paragraph(to_address, normal_style))
         elements.append(Spacer(1, 12))
         
-        # Subject & Greeting
         elements.append(Paragraph("<b>Subject: Price offer for supplying Rahimafrooz battery.</b>", styles['Heading3']))
         elements.append(Paragraph("Dear Sir, Greetings!<br/>In reference to your mail, please find price offer & warranty terms for Rahimafrooz battery to serve your requirement.", normal_style))
         elements.append(Spacer(1, 12))
         
-        # Table Section Header
         elements.append(Paragraph(f"<b>Price Offer of {selected_brand} Battery:</b>", styles['Heading4']))
         elements.append(Spacer(1, 5))
         
-        # Extract exact values from Excel
         sl_val = str(bat_row.get('SL', 1))
-        type_val = str(bat_row.get('Type', ''))
+        type_val = str(bat_row.get(type_col, ''))
         volt_val = str(bat_row.get('Volt', '12'))
         ah_val = str(bat_row.get('AH', ''))
         plate_val = str(bat_row.get('Plate', ''))
@@ -112,7 +111,6 @@ if uploaded_file is not None:
         special_price = str(bat_row.get('Special Offer With VAT', ''))
         vat_val = str(bat_row.get('VAT (15%)', ''))
         
-        # Professional Table Data mapping
         table_data = [
             ["SL", "Type", "Volt", "AH", "Plate", "Retail Price w/ VAT", "Special Offer w/ VAT", "VAT (15%)"],
             [sl_val, type_val, volt_val, ah_val, plate_val, retail_price, special_price, vat_val]
@@ -133,7 +131,6 @@ if uploaded_file is not None:
         elements.append(t)
         elements.append(Spacer(1, 15))
         
-        # Terms & Conditions Block
         elements.append(Paragraph("<b>Terms & Conditions:</b>", styles['Heading4']))
         terms_text = """
         • <b>Price Validity:</b> 15 Days.<br/>
@@ -146,7 +143,6 @@ if uploaded_file is not None:
         elements.append(Paragraph(terms_text, normal_style))
         elements.append(Spacer(1, 20))
         
-        # Signature block
         elements.append(Paragraph("Best Regards,", normal_style))
         elements.append(Spacer(1, 15))
         elements.append(Paragraph("<b>Md. Kamrul Islam</b><br/>Manager, B2B Sales<br/>Rahimafrooz Batteries Ltd<br/>Contact: +8801819466163", normal_style))
@@ -154,7 +150,7 @@ if uploaded_file is not None:
         doc.build(elements)
         buffer.seek(0)
         
-        st.success("প্রফেশনাল পিডিএফ সফলভাবে তৈরি হয়েছে!")
+        st.success("Professional PDF successfully toiri hoyeche!")
         st.download_button(
             label="📥 Download Professional PDF Offer",
             data=buffer,
