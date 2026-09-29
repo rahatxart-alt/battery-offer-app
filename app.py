@@ -43,6 +43,16 @@ else:
     customer_list = sorted(df_cust[cust_col].unique().tolist())
     selected_customer = st.selectbox("Select Customer Name:", options=customer_list)
     
+    # Show Selected Customer Info instantly on screen
+    cust_row = df_cust[df_cust[cust_col] == selected_customer].iloc[0]
+    c_name = str(cust_row.get('Customer Name', ''))
+    c_attn = str(cust_row.get('Concern Person', ''))
+    c_phone = str(cust_row.get('Contact Number', ''))
+    c_addr = str(cust_row.get('Company Address', ''))
+    
+    st.info(f"📋 **Customer Info:** Attn: **{c_attn}** | Phone: **{c_phone}** | Address: **{c_addr}**")
+    st.markdown("---")
+    
     if 'compact_items' not in st.session_state:
         st.session_state.compact_items = 1
 
@@ -105,7 +115,6 @@ else:
         if def_special == 0:
             def_special = def_retail
 
-        # Auto-update session state values when brand or type changes
         if st.session_state.get(prev_key) != curr_sel:
             st.session_state[prev_key] = curr_sel
             st.session_state[f"post_{i}"] = def_post
@@ -130,7 +139,7 @@ else:
         with cols[7]:
             c_warranty = st.text_input(f"Warr #{i+1}", key=f"warr_{i}")
         with cols[8]:
-            c_retail = st.number_input(f"Retail #{i+1}", step=100.0, key=f"ret_{i}")
+            c_retail = st.number_input(f"MRP #{i+1}", step=100.0, key=f"ret_{i}")
         with cols[9]:
             c_special = st.number_input(f"DP #{i+1}", step=50.0, key=f"sp_{i}")
             
@@ -152,13 +161,9 @@ else:
     st.markdown("---")
 
     if st.button("🚀 Generate Professional PDF Offer", type="primary"):
-        cust_matches = df_cust[df_cust[cust_col] == selected_customer]
-        
-        if cust_matches.empty:
+        if cust_row.empty:
             st.error("Nirbachito customer paowa jayni.")
         else:
-            cust_row = cust_matches.iloc[0]
-                
             current_date = datetime.date.today().strftime("%d-%b-%Y")
             ref_no = f"RBL/CS/ACI/26-27/{datetime.date.today().strftime('%d%m%y')}"
                 
@@ -180,12 +185,7 @@ else:
             elements.append(Paragraph(f"<b>Date:</b> {current_date}", normal_style))
             elements.append(Spacer(1, 10))
             
-            cust_name = str(cust_row.get('Customer Name', ''))
-            concern_person = str(cust_row.get('Concern Person', ''))
-            contact_no = str(cust_row.get('Contact Number', ''))
-            cust_address = str(cust_row.get('Company Address', ''))
-            
-            to_address = f"<b>To:</b><br/><b>{cust_name}</b><br/><b>Attn:</b> {concern_person} (Mob: {contact_no})<br/>{cust_address}"
+            to_address = f"<b>To:</b><br/><b>{c_name}</b><br/><b>Attn:</b> {c_attn} (Mob: {c_phone})<br/>{c_addr}"
             elements.append(Paragraph(to_address, normal_style))
             elements.append(Spacer(1, 12))
             
@@ -245,6 +245,6 @@ else:
             st.download_button(
                 label="📥 Download Professional PDF Offer",
                 data=buffer,
-                file_name=f"Price_Offer_{cust_name.replace(' ', '_')}.pdf",
+                file_name=f"Price_Offer_{c_name.replace(' ', '_')}.pdf",
                 mime="application/pdf"
             )
