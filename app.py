@@ -32,7 +32,7 @@ df_cust, df_price = load_data()
 if df_cust is None or df_price is None:
     st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হচ্ছে না। অনুগ্রহ করে চেক করুন।")
 else:
-    # Clean and standardize column names and string data
+    # Clean and standardize column names
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
     
@@ -40,26 +40,30 @@ else:
     brand_col = next((col for col in df_price.columns if 'brand' in col.lower()), df_price.columns[0] if len(df_price.columns) > 0 else None)
     type_col = next((col for col in df_price.columns if 'type' in col.lower() or 'model' in col.lower()), df_price.columns[1] if len(df_price.columns) > 1 else None)
     
+    # Drop rows with missing crucial data and convert to clean string
     df_cust = df_cust.dropna(subset=[cust_col])
     df_price = df_price.dropna(subset=[brand_col, type_col])
     
-    # Convert values to clean strings to prevent matching errors
     df_cust[cust_col] = df_cust[cust_col].astype(str).str.strip()
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
     st.write("### 📋 Selection Panel:")
     
-    customer_list = df_cust[cust_col].unique().tolist()
-    selected_customer = st.selectbox("Customer Name (Type to search):", customer_list)
+    # Customer Selection with Search
+    customer_list = sorted(df_cust[cust_col].unique().tolist())
+    selected_customer = st.selectbox("Customer Name (Type to search):", options=customer_list)
     
-    brand_list = df_price[brand_col].unique().tolist()
-    selected_brand = st.selectbox("Select Battery Brand:", brand_list)
+    # Brand Selection
+    brand_list = sorted(df_price[brand_col].unique().tolist())
+    selected_brand = st.selectbox("Select Battery Brand:", options=brand_list)
     
+    # Filter batteries based on brand
     filtered_batteries = df_price[df_price[brand_col] == selected_brand]
-    battery_types = filtered_batteries[type_col].unique().tolist()
+    battery_types = sorted(filtered_batteries[type_col].unique().tolist())
     
-    selected_battery_type = st.selectbox("Battery Type (Type to search):", battery_types)
+    # Battery Type Selection with Search
+    selected_battery_type = st.selectbox("Battery Type (Type to search):", options=battery_types)
     
     if st.button("Generate Professional PDF Offer"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
