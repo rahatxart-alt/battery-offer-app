@@ -8,9 +8,6 @@ import datetime
 
 st.set_page_config(page_title="Rahimafrooz Offer Generator", layout="centered")
 
-st.title("🔋 Rahimafrooz Professional Offer Generator")
-st.write("Ekdom compact ebong easy interface. Customer select korun ebong battery items add kore instant PDF download korun!")
-
 @st.cache_data
 def load_data():
     try:
@@ -43,12 +40,9 @@ else:
     df_price[brand_col] = df_price[brand_col].astype(str).str.strip()
     df_price[type_col] = df_price[type_col].astype(str).str.strip()
     
-    # --- COMPACT CUSTOMER SECTION ---
+    # Compact Customer Section
     customer_list = sorted(df_cust[cust_col].unique().tolist())
-    selected_customer = st.selectbox("👤 Select Customer Name:", options=customer_list)
-    
-    st.markdown("---")
-    st.markdown("### 🔋 Battery Items Selection (Compact View)")
+    selected_customer = st.selectbox("Select Customer Name:", options=customer_list)
     
     if 'compact_items' not in st.session_state:
         st.session_state.compact_items = 1
@@ -76,7 +70,6 @@ else:
         except:
             return 0.0
 
-    # Render compact rows
     for i in range(st.session_state.compact_items):
         cols = st.columns([2, 2, 1.5])
         
