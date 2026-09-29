@@ -8,29 +8,26 @@ import io
 st.set_page_config(page_title="Battery Price Offer Generator", layout="centered")
 
 st.title("🔋 Rahimafrooz Battery Price Offer Generator")
-st.write("Apnar Excel file upload korun jekhane customer name, address, ebong battery er info/price gulo ache.")
+st.write("আপনার এক্সেল ফাইলটি আপলোড করুন (যেখানে কাস্টমার নেম, অ্যাড্রেস এবং ব্যাটারির তথ্য রয়েছে)।")
 
 # Excel file upload field
 uploaded_file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
-    # Excel pore neoa
-    df = pd.read_excel(uploaded_file)
-    st.success("Excel file successfully upload hoyeche!")
+    # Excel file পড়া
+    df = pd.read_excel(uploaded_file, sheet_name='address')  # আপনার 'address' শিট থেকে ডাটা নেবে
+    st.success("এক্সেল ফাইল সফলভাবে আপলোড হয়েছে!")
     
-    st.write("### Data Preview:")
+    st.write("### ডাটা প্রিভিউ:")
     st.dataframe(df.head())
     
-    # Customer select ba row select korar option
-    customer_list = df['Customer_Name'].unique() if 'Customer_Name' in df.columns else df.iloc[:, 0].tolist()
-    selected_customer = st.selectbox("Customer Select korun:", customer_list)
+    # Customer Name সিলেক্ট করার অপশন
+    customer_list = df['Customer Name'].unique().tolist()
+    selected_customer = st.selectbox("কাস্টমার সিলেক্ট করুন:", customer_list)
     
     if st.button("Generate PDF Offer"):
-        # Select kora customer er data filter kora
-        if 'Customer_Name' in df.columns:
-            row = df[df['Customer_Name'] == selected_customer].iloc[0]
-        else:
-            row = df.iloc[0]
+        # সিলেক্ট করা কাস্টমার অনুযায়ী রো ফিল্টার করা
+        row = df[df['Customer Name'] == selected_customer].iloc[0]
             
         # PDF generation memory buffer
         buffer = io.BytesIO()
@@ -45,39 +42,30 @@ if uploaded_file is not None:
         elements.append(Paragraph("Business Office: 705 Nakhalpara, Tejgaon, Dhaka 1215", styles['Normal']))
         elements.append(Spacer(1, 10))
         
-        # Customer Details
-        cust_name = row.get('Customer_Name', 'Valued Customer')
-        cust_address = row.get('Customer_Address', 'Dhaka, Bangladesh')
-        ref_no = row.get('Ref_No', 'RBL/CS/ACI/26-27/290926')
-        date_str = row.get('Date', '29-Sep-2026')
+        # Customer & Concern Details
+        cust_name = row.get('Customer Name', '')
+        concern_person = row.get('Concern Person', '')
+        contact_no = row.get('Contact Number', '')
+        cust_address = row.get('Company Address', '')
         
-        elements.append(Paragraph(f"<b>Ref:</b> {ref_no}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Date:</b> {date_str}", styles['Normal']))
+        elements.append(Paragraph("<b>Ref:</b> RBL/CS/ACI/26-27/290926", styles['Normal']))
+        elements.append(Paragraph("<b>Date:</b> 29-Sep-2026", styles['Normal']))
         elements.append(Spacer(1, 10))
-        elements.append(Paragraph(f"<b>To:</b><br/>{cust_name}<br/>{cust_address}", styles['Normal']))
+        
+        to_address = f"<b>To:</b><br/>{cust_name}<br/><b>Attn:</b> {concern_person} (Mob: {contact_no})<br/>{cust_address}"
+        elements.append(Paragraph(to_address, styles['Normal']))
         elements.append(Spacer(1, 15))
         
         elements.append(Paragraph("<b>Subject: Price offer for supplying Rahimafrooz battery.</b>", styles['Heading3']))
         elements.append(Paragraph("Dear Sir, Greetings!<br/>In reference to your mail, please find price offer & warranty terms for Rahimafrooz battery to serve your requirement.", styles['Normal']))
         elements.append(Spacer(1, 15))
         
-        # Table Data from Excel
+        # Table Data Section
         elements.append(Paragraph("<b>Low Maintenance Battery:</b>", styles['Heading4']))
         
-        # Dynamic values from excel or default fallback
         table_data = [
             ["SL", "Type", "Volt", "Plate", "AH", "Retail price with VAT", "Special Offered price with VAT", "VAT (15%)", "Total Offered price with VAT"],
-            [
-                str(row.get('SL', 1)),
-                str(row.get('Type', 'PCM27')),
-                str(row.get('Volt', '12')),
-                str(row.get('Plate', '27')),
-                str(row.get('AH', '160')),
-                str(row.get('Retail_Price', '27,120.00')),
-                str(row.get('Special_Price', '17,826.09')),
-                str(row.get('VAT', '2,673.91')),
-                str(row.get('Total_Price', '20,500'))
-            ]
+            ["1", "PCM27", "12", "27", "160", "27,120.00", "17,826.09", "2,673.91", "20,500"]
         ]
         
         t = Table(table_data)
@@ -92,7 +80,7 @@ if uploaded_file is not None:
         elements.append(t)
         elements.append(Spacer(1, 15))
         
-        # Terms and conditions summary
+        # Terms and conditions
         elements.append(Paragraph("<b>Terms & Conditions:</b>", styles['Heading4']))
         terms_text = """
         • Price Validity: 15 Days.<br/>
@@ -105,10 +93,10 @@ if uploaded_file is not None:
         doc.build(elements)
         buffer.seek(0)
         
-        st.success("PDF successfully toiri hoyeche!")
+        st.success("পিডিএফ সফলভাবে তৈরি হয়েছে!")
         st.download_button(
             label="📥 Download PDF Offer",
             data=buffer,
-            file_name=f"Price_Offer_{cust_name}.pdf",
+            file_name=f"Price_Offer_{cust_name.replace(' ', '_')}.pdf",
             mime="application/pdf"
         )
