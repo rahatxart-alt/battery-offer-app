@@ -9,7 +9,7 @@ import datetime
 st.set_page_config(page_title="Rahimafrooz Smart Price Offer Generator", layout="centered")
 
 st.title("🔋 Rahimafrooz Smart Price Offer Generator")
-st.write("ডাটা সফলভাবে লোড হয়েছে। কাস্টমার ও ব্যাটারি সিলেক্ট করুন এবং প্রয়োজনমতো মূল্য পরিবর্তন করুন!")
+st.write("Customer ebong Battery select korun. MRP ebong Price automatically show korbe, apni proyojonmoto komate parben!")
 
 @st.cache_data
 def load_data():
@@ -24,7 +24,7 @@ def load_data():
 df_cust, df_price = load_data()
 
 if df_cust is None or df_price is None:
-    st.error("Data.xlsx ফাইলটি রিড করা সম্ভব হয়নি।")
+    st.error("Data.xlsx file read korte somoshya hocche.")
 else:
     df_cust.columns = df_cust.columns.astype(str).str.strip()
     df_price.columns = df_price.columns.astype(str).str.strip()
@@ -56,28 +56,39 @@ else:
     
     selected_battery_type = st.selectbox("Battery Type (Type to search):", options=battery_types)
     
-    # Fetch default values from Excel for the selected battery
+    # Fetch exact row and prices safely
     bat_row = filtered_batteries[filtered_batteries[type_col] == selected_battery_type].iloc[0]
     
-    default_special_price = bat_row.get('Special Offer With VAT', 0)
-    try:
-        default_special_price = float(default_special_price)
-    except:
-        default_special_price = 0.0
+    # Extract MRP and Default Special Price safely
+    def clean_price(val):
+        try:
+            return float(str(val).replace(',', '').strip())
+        except:
+            return 0.0
+
+    mrp_val = bat_row.get('Retail price with VAT', 0)
+    default_special = bat_row.get('Special Offer With VAT', 0)
+    
+    mrp_float = clean_price(mrp_val)
+    default_special_float = clean_price(default_special)
+    if default_special_float == 0:
+        default_special_float = mrp_float
 
     st.write("---")
-    st.write("### 💰 Price Adjustment:")
+    st.write("### 💰 Price Details & Adjustment:")
+    st.info(f"🏷️ **MRP (Retail Price with VAT):** ৳ {mrp_float:,.2f}")
+    
     custom_special_price = st.number_input(
-        "Special Offer With VAT (ইচ্ছেমতো কমিয়ে বসাতে পারেন):", 
-        value=default_special_price, 
-        step=100.0
+        "Special Offer With VAT / DP (Apni ekhane icchamoto price komiye ba bariye dite paren):", 
+        value=default_special_float, 
+        step=50.0
     )
     
     if st.button("Generate Professional PDF Offer"):
         cust_matches = df_cust[df_cust[cust_col] == selected_customer]
         
         if cust_matches.empty:
-            st.error("নির্বাচিত কাস্টমার ডেটাবেজে পাওয়া যায়নি।")
+            st.error("Nirbachito customer database-e paowa jayni.")
         else:
             cust_row = cust_matches.iloc[0]
                 
@@ -85,27 +96,14 @@ else:
             ref_no = f"RBL/CS/ACI/26-27/{datetime.date.today().strftime('%d%m%y')}"
                 
             buffer = io.BytesIO()
-            # Landscape orientation to accommodate all columns nicely
             doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=25, bottomMargin=25)
             elements = []
             
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             styles = getSampleStyleSheet()
             
-            title_style = ParagraphStyle(
-                'TitleStyle',
-                parent=styles['Heading1'],
-                fontSize=16,
-                textColor=colors.HexColor("#B22222"),
-                spaceAfter=4
-            )
-            
-            normal_style = ParagraphStyle(
-                'NormalStyle',
-                parent=styles['Normal'],
-                fontSize=10,
-                leading=14
-            )
+            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor("#B22222"), spaceAfter=4)
+            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=10, leading=14)
 
             elements.append(Paragraph("<b>RAHIMAFROOZ BATTERIES LIMITED</b>", title_style))
             elements.append(Paragraph("Business Office: 705 Nakhalpara, Tejgaon, Dhaka 1215 | Tel: 02-9113696", normal_style))
@@ -131,24 +129,22 @@ else:
             elements.append(Paragraph(f"<b>Price Offer of {selected_brand} Battery:</b>", styles['Heading4']))
             elements.append(Spacer(1, 5))
             
-            # Extracting all columns matching your excel structure
             brand_val = str(bat_row.get('Brand', selected_brand))
             type_val = str(bat_row.get('Type', selected_battery_type))
             post_val = str(bat_row.get('Post', 'I'))
             volt_val = str(bat_row.get('Volt', '12'))
             ah_val = str(bat_row.get('AH', ''))
             plate_val = str(bat_row.get('Plate', 'N/A'))
-            bat_type_col = str(bat_row.get('Type.1', bat_row.get('Type', 'SMF'))) # Handling duplicate 'Type' column if present
+            bat_type_col = str(bat_row.get('Type.1', bat_row.get('Type', 'SMF')))
             warranty_val = str(bat_row.get('Warranty', '24M'))
-            retail_price = str(bat_row.get('Retail price with VAT', ''))
+            retail_price = f"{mrp_float:,.2f}"
             offer_wo_vat = str(bat_row.get('Offer Without VAT', ''))
             vat_val = str(bat_row.get('VAT (15%)', ''))
-            
             formatted_special_price = f"{custom_special_price:,.2f}"
             
             table_data = [
                 ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"],
-                [brand_val, type_val, post_val, volt_val, ah_val, plate_val, bat_type_col, warranty_val, str(retail_price), str(offer_wo_vat), str(vat_val), formatted_special_price]
+                [brand_val, type_val, post_val, volt_val, ah_val, plate_val, bat_type_col, warranty_val, retail_price, str(offer_wo_vat), str(vat_val), formatted_special_price]
             ]
             
             t = Table(table_data, colWidths=[65, 100, 35, 30, 35, 40, 45, 55, 75, 75, 60, 85])
@@ -169,11 +165,11 @@ else:
             elements.append(Paragraph("<b>Terms & Conditions:</b>", styles['Heading4']))
             terms_text = """
             • <b>Price Validity:</b> 15 Days.<br/>
-            • <b>Warranty:</b> As per manufacturer standard terms from the date of delivery.<br/>
-            • <b>Delivery Lead Time:</b> 15 days from the date of PO issuance.<br/>
+            • <b>Warranty:</b> As per manufacturer standard terms from date of delivery.<br/>
+            • <b>Delivery Lead Time:</b> 15 days from PO issuance.<br/>
             • <b>Delivery Place:</b> At your warehouse.<br/>
-            • <b>Payment Terms:</b> 15 Days from the date of Bill submission.<br/>
-            • <b>VAT/TAX:</b> Rahimafrooz will provide Mushok 6.3. AIT can be deducted as per current NBR rule.
+            • <b>Payment Terms:</b> 15 Days from bill submission.<br/>
+            • <b>VAT/TAX:</b> Rahimafrooz will provide Mushok 6.3. AIT deductible as per NBR rule.
             """
             elements.append(Paragraph(terms_text, normal_style))
             elements.append(Spacer(1, 20))
@@ -185,7 +181,7 @@ else:
             doc.build(elements)
             buffer.seek(0)
             
-            st.success("প্রফেশনাল পিডিএফ সফলভাবে তৈরি হয়েছে!")
+            st.success("Professional PDF successfully toiri hoyeche!")
             st.download_button(
                 label="📥 Download Professional PDF Offer",
                 data=buffer,
