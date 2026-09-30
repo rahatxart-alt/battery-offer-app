@@ -330,10 +330,17 @@ footer {visibility: hidden;}
 # ============================================================
 # HELPERS
 # ============================================================
+# Always resolve app assets relative to app.py.
+# Streamlit Cloud may execute the app from a different working directory.
+APP_DIR = Path(__file__).resolve().parent
+DATA_FILE = APP_DIR / "Data.xlsx"
+MASTER_PDF = APP_DIR / "Price offer for supplying Rahimafrooz battery. (2).pdf"
+
+
 @st.cache_data
 def load_data():
     try:
-        data_file = Path("Data.xlsx")
+        data_file = DATA_FILE
         if not data_file.exists():
             st.error("Data.xlsx file paowa jayni. App-er sathe Data.xlsx rakhun.")
             return None, None
@@ -742,14 +749,20 @@ def build_offer_pdf():
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
 
-    template_path = Path("Price offer for supplying Rahimafrooz battery. (2).pdf")
+    template_path = MASTER_PDF
 
-    if not template_path.exists():
-        raise FileNotFoundError(
-            "Master PDF template not found. Keep "
-            "'Price offer for supplying Rahimafrooz battery. (2).pdf' "
-            "in the same folder as this app."
+    if not template_path.is_file():
+        available_pdfs = sorted(p.name for p in APP_DIR.glob("*.pdf"))
+        available_text = ", ".join(available_pdfs) if available_pdfs else "No PDF files found"
+        st.error(
+            "Master PDF template not found.\n\n"
+            f"Expected file: {template_path.name}\n\n"
+            f"App folder: {APP_DIR}\n\n"
+            f"PDF files currently found: {available_text}\n\n"
+            "Upload the master PDF to the same GitHub repository/folder as app.py "
+            "and redeploy the Streamlit app."
         )
+        st.stop()
 
     # --------------------------------------------------------
     # Create an overlay for PAGE 2 only.
