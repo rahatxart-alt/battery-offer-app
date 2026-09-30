@@ -727,7 +727,18 @@ def build_offer_pdf():
 
     Keep the template PDF in the same folder as this Streamlit app.
     """
-    from pypdf import PdfReader, PdfWriter
+    # pypdf is required only when generating the final PDF.
+    # Keep the import inside this function so the app can still open
+    # even if the dependency has not been installed yet.
+    try:
+        from pypdf import PdfReader, PdfWriter
+    except ModuleNotFoundError:
+        st.error(
+            "PDF generator dependency missing: pypdf. "
+            "Add 'pypdf' to requirements.txt and redeploy the Streamlit app."
+        )
+        st.stop()
+
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
 
