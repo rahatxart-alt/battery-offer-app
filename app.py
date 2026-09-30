@@ -862,7 +862,7 @@ def build_offer_pdf():
     )
 
     c.setFillColor(colors.black)
-    c.setFont("Times-Bold", 20)
+    c.setFont("Times-Bold", 18)
     c.drawString(31, 603, c_name)
 
     c.setFont("Times-Roman", 10)
@@ -905,18 +905,18 @@ def build_offer_pdf():
     # Clear only the old battery heading and old table.
     # IMPORTANT: keep the full Dear Sir / Greetings / description /
     # requirement paragraphs above this area untouched.
-    # Clear the old "Sealed Maintenance Free Battery" /
-    # "Price Offer of ..." headings only.
-    # The description above remains untouched.
+    # Clear ONLY the old battery-section heading.
+    # The description / requirement text above must remain untouched.
     c.rect(
-        20, 395, 565, 70,
+        20, 330, 565, 62,
         stroke=0,
         fill=1,
     )
 
-    # Clear the old master table area.
+    # Clear ONLY the original master battery table area.
+    # Do not extend this rectangle into the description area.
     c.rect(
-        20, 205, 565, 190,
+        20, 205, 565, 125,
         stroke=0,
         fill=1,
     )
@@ -1046,7 +1046,7 @@ def build_offer_pdf():
     table_x = (page_w - table_width) / 2
 
     # Keep the table below the full description block.
-    table.drawOn(c, table_x, 215)
+    table.drawOn(c, table_x, 205)
 
     c.save()
     overlay_buffer.seek(0)
