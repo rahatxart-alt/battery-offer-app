@@ -846,7 +846,7 @@ def build_offer_pdf():
     # White-out only the old customer name/address.
     c.setFillColor(colors.white)
     c.rect(
-        26, 568, 270, 64,
+        26, 568, 560, 64,
         stroke=0,
         fill=1,
     )
@@ -856,10 +856,10 @@ def build_offer_pdf():
     c.drawString(31, 603, c_name)
 
     c.setFont("Times-Roman", 10)
+    # Attn / Concern Person is intentionally NOT printed on the PDF.
+    # Keep only the customer address.
     customer_lines = []
 
-    if c_attn:
-        customer_lines.append(c_attn)
     if c_addr:
         customer_lines.extend(
             [line.strip() for line in str(c_addr).splitlines() if line.strip()]
@@ -891,8 +891,18 @@ def build_offer_pdf():
     # Remove the old section completely. The final PDF should show
     # only the compact battery price table here — no extra heading.
     c.setFillColor(colors.white)
+
+    # Clear ONLY the old battery heading area.
+    # Do not touch the Dear Sir / Greetings / company description.
     c.rect(
-        20, 245, 565, 190,
+        20, 335, 565, 62,
+        stroke=0,
+        fill=1,
+    )
+
+    # Clear the old battery table area.
+    c.rect(
+        20, 245, 565, 88,
         stroke=0,
         fill=1,
     )
@@ -989,7 +999,7 @@ def build_offer_pdf():
     table_x = (A4[0] - table_width) / 2
 
     # Put the compact table higher on page 2.
-    table.drawOn(c, table_x, 305)
+    table.drawOn(c, table_x, 250)
 
     c.save()
     overlay_buffer.seek(0)
