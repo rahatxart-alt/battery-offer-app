@@ -831,8 +831,9 @@ def build_offer_pdf():
     # Keep a clean, continuous left/right margin line through the offer page.
     c.setStrokeColor(colors.black)
     c.setLineWidth(0.7)
-    c.line(24, 18, 24, page_h - 18)
-    c.line(page_w - 24, 18, page_w - 24, page_h - 18)
+    # Match the master pad's full-height left/right margin.
+    c.line(35, 18, 35, page_h - 18)
+    c.line(page_w - 35, 18, page_w - 35, page_h - 18)
 
     # ---------- DYNAMIC REF + DATE ----------
     # IMPORTANT:
@@ -861,7 +862,7 @@ def build_offer_pdf():
     )
 
     c.setFillColor(colors.black)
-    c.setFont("Times-Bold", 10.5)
+    c.setFont("Times-Bold", 20)
     c.drawString(31, 603, c_name)
 
     c.setFont("Times-Roman", 10)
@@ -904,14 +905,18 @@ def build_offer_pdf():
     # Clear only the old battery heading and old table.
     # IMPORTANT: keep the full Dear Sir / Greetings / description /
     # requirement paragraphs above this area untouched.
+    # Clear the old "Sealed Maintenance Free Battery" /
+    # "Price Offer of ..." headings only.
+    # The description above remains untouched.
     c.rect(
-        20, 300, 565, 48,
+        20, 395, 565, 70,
         stroke=0,
         fill=1,
     )
 
+    # Clear the old master table area.
     c.rect(
-        20, 235, 565, 65,
+        20, 205, 565, 190,
         stroke=0,
         fill=1,
     )
@@ -922,8 +927,8 @@ def build_offer_pdf():
     header_style = ParagraphStyle(
         "OfferHeader",
         fontName=PDF_BOLD_FONT,
-        fontSize=8.0,
-        leading=8.6,
+        fontSize=9.0,
+        leading=9.6,
         alignment=1,
         textColor=colors.black,
         spaceAfter=0,
@@ -932,8 +937,8 @@ def build_offer_pdf():
     body_style = ParagraphStyle(
         "OfferBody",
         fontName=PDF_BODY_FONT,
-        fontSize=8.0,
-        leading=9.0,
+        fontSize=8.5,
+        leading=9.5,
         alignment=1,
         textColor=colors.black,
         spaceAfter=0,
@@ -942,7 +947,11 @@ def build_offer_pdf():
 
     def P(value, style=body_style):
         value = "" if value is None else str(value)
-        value = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        # Preserve intentional <br/> tags for table headers.
+        value = value.replace("&", "&amp;")
+        value = value.replace("<br/>", "__BR__")
+        value = value.replace("<", "&lt;").replace(">", "&gt;")
+        value = value.replace("__BR__", "<br/>")
         value = value.replace("\n", "<br/>")
         return Paragraph(value, style)
 
@@ -1014,9 +1023,9 @@ def build_offer_pdf():
             [
                 ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
                 ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
-                ("FONTSIZE", (0, 0), (-1, 0), 8),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("LEADING", (0, 0), (-1, -1), 9),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTSIZE", (0, 1), (-1, -1), 8.5),
+                ("LEADING", (0, 0), (-1, -1), 9.5),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("GRID", (0, 0), (-1, -1), 0.65, colors.black),
@@ -1029,14 +1038,14 @@ def build_offer_pdf():
         )
     )
 
-    table_width, table_height = table.wrapOn(c, 525, 180)
+    table_width, table_height = table.wrapOn(c, page_w, 220)
 
-    # Center the table inside the A4 page.
-    # This prevents the final price column from crossing the
-    # master-pad border.
-    table_x = (A4[0] - table_width) / 2
+    # Center the table on the actual Letter page.
+    # The total width is constrained so it remains inside the
+    # master-pad margin.
+    table_x = (page_w - table_width) / 2
 
-    # Put the compact table higher on page 2.
+    # Keep the table below the full description block.
     table.drawOn(c, table_x, 215)
 
     c.save()
