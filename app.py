@@ -821,18 +821,21 @@ def build_offer_pdf():
     page_w, page_h = letter
 
     # ---------- DYNAMIC REF + DATE ----------
-    # The pad stays visually identical, but these two fields are
-    # automatically updated for every quotation.
+    # IMPORTANT:
+    # The master PDF already contains Ref/Date in the correct
+    # position below the company header. White-out ONLY that
+    # existing line, then write the new values at the same place.
+    # This prevents Ref/Date from appearing above the letterhead.
     c.setFillColor(colors.white)
-    c.rect(26, 733, 560, 42, stroke=0, fill=1)
+    c.rect(28, 634, 556, 20, stroke=0, fill=1)
 
     c.setFillColor(colors.black)
     c.setFont("Helvetica", 10.5)
-    c.drawString(31, 760, f"Ref: {ref_no}")
+    c.drawString(31, 644, f"Ref: {ref_no}")
 
     date_text = f"Date: {current_date}"
     date_width = c.stringWidth(date_text, "Helvetica", 10.5)
-    c.drawString(page_w - date_width - 30, 760, date_text)
+    c.drawString(page_w - date_width - 30, 644, date_text)
 
     # ---------- CUSTOMER BLOCK ----------
     # White-out only the old customer name/address.
