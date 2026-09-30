@@ -87,7 +87,7 @@ else:
             return default
 
     for i in range(st.session_state.compact_items):
-        cols = st.columns([2, 2.2, 0.8, 0.8, 0.8, 0.9, 1, 1, 1.2, 1.4])
+        cols = st.columns([3, 3, 2, 2])
         
         with cols[0]:
             b_brand = st.selectbox(f"Brand #{i+1}", options=brand_list, key=f"c_brand_{i}")
@@ -103,12 +103,6 @@ else:
         prev_key = f"prev_sel_{i}"
         curr_sel = f"{b_brand}_{b_type}"
         
-        def_post = clean_val(row_data.get('Post', 'I'), 'I')
-        def_volt = clean_val(row_data.get('Volt', '12'), '12')
-        def_ah = clean_val(row_data.get('AH', ''), '')
-        def_plate = clean_val(row_data.get('Plate', 'N/A'), 'N/A')
-        def_btype = clean_val(row_data.get('Type.1', row_data.get('Type', 'SMF')), 'SMF')
-        def_warranty = clean_val(row_data.get('Warranty', '24M'), '24M')
         def_retail = clean_num(row_data.get('Retail price with VAT', 0))
         def_special = clean_num(row_data.get('Special Offer With VAT', def_retail))
         if def_special == 0:
@@ -116,45 +110,26 @@ else:
 
         if st.session_state.get(prev_key) != curr_sel:
             st.session_state[prev_key] = curr_sel
-            st.session_state[f"post_{i}"] = def_post
-            st.session_state[f"volt_{i}"] = def_volt
-            st.session_state[f"ah_{i}"] = def_ah
-            st.session_state[f"plate_{i}"] = def_plate
-            st.session_state[f"btype_{i}"] = def_btype
-            st.session_state[f"warr_{i}"] = def_warranty
             st.session_state[f"ret_{i}"] = def_retail
             st.session_state[f"sp_{i}"] = def_special
 
         with cols[2]:
-            c_post = st.text_input(f"Post #{i+1}", key=f"post_{i}")
-        with cols[3]:
-            c_volt = st.text_input(f"Volt #{i+1}", key=f"volt_{i}")
-        with cols[4]:
-            c_ah = st.text_input(f"AH #{i+1}", key=f"ah_{i}")
-        with cols[5]:
-            c_plate = st.text_input(f"Plate #{i+1}", key=f"plate_{i}")
-        with cols[6]:
-            c_btype = st.text_input(f"Type #{i+1}", key=f"btype_{i}")
-        with cols[7]:
-            c_warranty = st.text_input(f"Warr #{i+1}", key=f"warr_{i}")
-        with cols[8]:
             c_retail = st.number_input(f"MRP #{i+1}", step=100.0, key=f"ret_{i}")
-        with cols[9]:
+        with cols[3]:
             c_special = st.number_input(f"DP #{i+1}", step=50.0, key=f"sp_{i}")
             
-        # Exact calculation for Offer Without VAT and VAT (15%)
         calc_offer_wo_vat = c_special / 1.15
         calc_vat = c_special - calc_offer_wo_vat
             
         selected_items.append({
             "Brand": b_brand,
             "Type": b_type,
-            "Post": c_post,
-            "Volt": c_volt,
-            "AH": c_ah,
-            "Plate": c_plate,
-            "Type_Sub": c_btype,
-            "Warranty": c_warranty,
+            "Post": clean_val(row_data.get('Post', 'I'), 'I'),
+            "Volt": clean_val(row_data.get('Volt', '12'), '12'),
+            "AH": clean_val(row_data.get('AH', ''), ''),
+            "Plate": clean_val(row_data.get('Plate', 'N/A'), 'N/A'),
+            "Type_Sub": clean_val(row_data.get('Type.1', row_data.get('Type', 'SMF')), 'SMF'),
+            "Warranty": clean_val(row_data.get('Warranty', '24M'), '24M'),
             "Retail": f"{c_retail:,.2f}",
             "Offer_WO_VAT": f"{calc_offer_wo_vat:,.2f}",
             "VAT": f"{calc_vat:,.2f}",
@@ -171,7 +146,6 @@ else:
             ref_no = f"RBL/CS/ACI/26-27/{datetime.date.today().strftime('%d%m%y')}"
                 
             buffer = io.BytesIO()
-            # Standard Letter size portrait orientation
             doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=25, leftMargin=25, topMargin=25, bottomMargin=25)
             elements = []
             
@@ -211,7 +185,6 @@ else:
                     item["Offer_WO_VAT"], item["VAT"], item["Special"]
                 ])
             
-            # Adjusted column widths to fit Letter size width perfectly
             t = Table(table_data, colWidths=[55, 75, 30, 25, 30, 32, 35, 40, 62, 62, 50, 68])
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EAEAEA")),
