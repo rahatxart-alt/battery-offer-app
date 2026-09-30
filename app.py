@@ -796,6 +796,8 @@ def build_offer_pdf():
 
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
 
     # Prefer a local master PDF when available. If Streamlit Cloud
     # does not have the PDF as a separate repository file, fall back
@@ -825,6 +827,13 @@ def build_offer_pdf():
     c = canvas.Canvas(overlay_buffer, pagesize=letter)
     page_w, page_h = letter
 
+    # ---------- PAGE MARGIN LINES ----------
+    # Keep a clean, continuous left/right margin line through the offer page.
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.7)
+    c.line(24, 18, 24, page_h - 18)
+    c.line(page_w - 24, 18, page_w - 24, page_h - 18)
+
     # ---------- DYNAMIC REF + DATE ----------
     # IMPORTANT:
     # The master PDF already contains Ref/Date in the correct
@@ -846,7 +855,7 @@ def build_offer_pdf():
     # White-out only the old customer name/address.
     c.setFillColor(colors.white)
     c.rect(
-        26, 568, 560, 64,
+        26, 568, 560, 48,
         stroke=0,
         fill=1,
     )
@@ -892,56 +901,85 @@ def build_offer_pdf():
     # only the compact battery price table here — no extra heading.
     c.setFillColor(colors.white)
 
-    # Clear ONLY the old battery heading area.
-    # Do not touch the Dear Sir / Greetings / company description.
+    # Clear only the old battery heading and old table.
+    # IMPORTANT: keep the full Dear Sir / Greetings / description /
+    # requirement paragraphs above this area untouched.
     c.rect(
-        20, 335, 565, 62,
+        20, 300, 565, 48,
         stroke=0,
         fill=1,
     )
 
-    # Clear the old battery table area.
     c.rect(
-        20, 245, 565, 88,
+        20, 235, 565, 65,
         stroke=0,
         fill=1,
     )
 
     # 12-column table matching the requested original format.
+    # Larger Times font, with wrapping inside cells so the table remains
+    # readable and never crosses its borders.
+    header_style = ParagraphStyle(
+        "OfferHeader",
+        fontName=PDF_BOLD_FONT,
+        fontSize=8.0,
+        leading=8.6,
+        alignment=1,
+        textColor=colors.black,
+        spaceAfter=0,
+        spaceBefore=0,
+    )
+    body_style = ParagraphStyle(
+        "OfferBody",
+        fontName=PDF_BODY_FONT,
+        fontSize=8.0,
+        leading=9.0,
+        alignment=1,
+        textColor=colors.black,
+        spaceAfter=0,
+        spaceBefore=0,
+    )
+
+    def P(value, style=body_style):
+        value = "" if value is None else str(value)
+        value = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        value = value.replace("\n", "<br/>")
+        return Paragraph(value, style)
+
     table_data = [
         [
-            "SL",
-            "Brand",
-            "Type",
-            "Post",
-            "Volt",
-            "AH",
-            "Plate",
-            "Type",
-            "Warranty",
-            "Retail\nprice with\nVAT",
-            "Offer\nWithout\nVAT",
-            "VAT\n(15%)",
-            "Special Offer\nWith VAT",
+            P("SL", header_style),
+            P("Brand", header_style),
+            P("Type", header_style),
+            P("Post", header_style),
+            P("Volt", header_style),
+            P("AH", header_style),
+            P("Plate", header_style),
+            P("Type", header_style),
+            P("Warranty", header_style),
+            P("Retail<br/>price with<br/>VAT", header_style),
+            P("Offer<br/>Without<br/>VAT", header_style),
+            P("VAT<br/>(15%)", header_style),
+            P("Special Offer<br/>With VAT", header_style),
         ]
     ]
 
     for i, item in enumerate(selected_items, start=1):
         table_data.append(
             [
-                str(i),
-                item["Brand"],
-                item["Type"],
-                item["Post"],
-                item["Volt"],
-                item["AH"],
-                item["Plate"],
-                item["Type_Sub"],
-                item["Warranty"],
-                item["Retail"],
-                item["Offer_WO_VAT"],
-                item["VAT"],
-                item["Special"],
+                P(i),
+                P(item["Brand"]),
+                P(item["Type"]),
+                P(item["Post"]),
+                P(item["Volt"]),
+                P(item["AH"]),
+                P(item["Plate"]),
+                P(item["Type_Sub"]),
+                P(item["Warranty"]),
+                P(item["Retail"]),
+                P(item["Offer_WO_VAT"]),
+                P(item["VAT"]),
+                P(item["Special"]),
             ]
         )
 
@@ -950,25 +988,25 @@ def build_offer_pdf():
     # The table is also centered below, so the rightmost column cannot
     # cross the page/master-pad boundary.
     column_widths = [
-        22,   # SL
-        48,   # Brand
-        80,   # Type
-        28,   # Post
-        30,   # Volt
-        28,   # AH
-        33,   # Plate
-        32,   # Type (sub)
-        42,   # Warranty
+        24,   # SL
+        52,   # Brand
+        84,   # Type
+        30,   # Post
+        31,   # Volt
+        30,   # AH
+        35,   # Plate
+        34,   # Type (sub)
+        46,   # Warranty
         58,   # Retail price with VAT
-        62,   # Offer without VAT
+        60,   # Offer without VAT
         40,   # VAT
-        42,   # Special offer with VAT
+        41,   # Special offer with VAT
     ]
 
     table = Table(
         table_data,
         colWidths=column_widths,
-        rowHeights=[30] + [24] * len(selected_items),
+        repeatRows=1,
     )
 
     table.setStyle(
@@ -976,17 +1014,17 @@ def build_offer_pdf():
             [
                 ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
                 ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
-                ("FONTSIZE", (0, 0), (-1, 0), 6.2),
-                ("FONTSIZE", (0, 1), (-1, -1), 6.4),
-                ("LEADING", (0, 0), (-1, -1), 7),
+                ("FONTSIZE", (0, 0), (-1, 0), 8),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("LEADING", (0, 0), (-1, -1), 9),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("GRID", (0, 0), (-1, -1), 0.65, colors.black),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.white),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("LEFTPADDING", (0, 0), (-1, -1), 1.5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 1.5),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
             ]
         )
     )
@@ -999,7 +1037,7 @@ def build_offer_pdf():
     table_x = (A4[0] - table_width) / 2
 
     # Put the compact table higher on page 2.
-    table.drawOn(c, table_x, 250)
+    table.drawOn(c, table_x, 215)
 
     c.save()
     overlay_buffer.seek(0)
