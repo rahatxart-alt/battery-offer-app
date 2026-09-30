@@ -1,5 +1,7 @@
 import io
+import re
 import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import pandas as pd
@@ -730,6 +732,35 @@ for idx, row_dict in enumerate(st.session_state.rows):
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
+# AUTOMATIC REFERENCE / DATE
+# ============================================================
+FY_CODE = "26-27"
+
+
+def customer_code(customer_name):
+    """
+    Build customer code from the first letter of every word.
+    Examples:
+      A-One Polymer Ltd. -> APL
+      Beximco Pharmaceuticals Ltd. -> BPL
+    """
+    tokens = str(customer_name).split()
+    initials = []
+    for token in tokens:
+        match = re.search(r"[A-Za-z]", token)
+        if match:
+            initials.append(match.group(0).upper())
+    return "".join(initials)
+
+
+def make_reference(customer_name, quotation_date=None):
+    quotation_date = quotation_date or datetime.date.today()
+    code = customer_code(customer_name) or "CUS"
+    date_code = quotation_date.strftime("%d%m%y")
+    return f"RBL/CS/{code}/{FY_CODE}/{date_code}"
+
+
+# ============================================================
 # PDF GENERATOR
 # ============================================================
 def build_offer_pdf():
@@ -753,6 +784,10 @@ def build_offer_pdf():
             "Add 'pypdf' to requirements.txt and redeploy the Streamlit app."
         )
         st.stop()
+
+    quotation_date = datetime.datetime.now(ZoneInfo("Asia/Dhaka")).date()
+    current_date = quotation_date.strftime("%d-%b-%Y")
+    ref_no = make_reference(c_name, quotation_date)
 
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
@@ -785,9 +820,22 @@ def build_offer_pdf():
     c = canvas.Canvas(overlay_buffer, pagesize=letter)
     page_w, page_h = letter
 
+    # ---------- DYNAMIC REF + DATE ----------
+    # The pad stays visually identical, but these two fields are
+    # automatically updated for every quotation.
+    c.setFillColor(colors.white)
+    c.rect(26, 733, 560, 42, stroke=0, fill=1)
+
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 10.5)
+    c.drawString(31, 760, f"Ref: {ref_no}")
+
+    date_text = f"Date: {current_date}"
+    date_width = c.stringWidth(date_text, "Helvetica", 10.5)
+    c.drawString(page_w - date_width - 30, 760, date_text)
+
     # ---------- CUSTOMER BLOCK ----------
     # White-out only the old customer name/address.
-    # Ref + Date + Subject remain exactly as in the master PDF.
     c.setFillColor(colors.white)
     c.rect(
         26, 568, 270, 64,
@@ -967,7 +1015,7 @@ def build_offer_pdf():
     writer.write(output_buffer)
     output_buffer.seek(0)
 
-    return output_buffer, "MASTER-TEMPLATE"
+    return output_buffer, ref_no
 
 
 # ============================================================
