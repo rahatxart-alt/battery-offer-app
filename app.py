@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
@@ -142,7 +142,7 @@ else:
         with cols[9]:
             c_special = st.number_input(f"DP #{i+1}", step=50.0, key=f"sp_{i}")
             
-        # Automatic Calculation for Offer Without VAT and VAT (15%) based on Special Offer (DP)
+        # Exact calculation for Offer Without VAT and VAT (15%)
         calc_offer_wo_vat = c_special / 1.15
         calc_vat = c_special - calc_offer_wo_vat
             
@@ -171,33 +171,34 @@ else:
             ref_no = f"RBL/CS/ACI/26-27/{datetime.date.today().strftime('%d%m%y')}"
                 
             buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=25, bottomMargin=25)
+            # Standard Letter size portrait orientation
+            doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=25, leftMargin=25, topMargin=25, bottomMargin=25)
             elements = []
             
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             styles = getSampleStyleSheet()
             
-            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor("#B22222"), spaceAfter=4)
-            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=10, leading=14)
+            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=15, textColor=colors.HexColor("#B22222"), spaceAfter=4)
+            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=9.5, leading=13)
 
             elements.append(Paragraph("<b>RAHIMAFROOZ BATTERIES LIMITED</b>", title_style))
             elements.append(Paragraph("Business Office: 705 Nakhalpara, Tejgaon, Dhaka 1215 | Tel: 02-9113696", normal_style))
-            elements.append(Spacer(1, 10))
+            elements.append(Spacer(1, 8))
             
             elements.append(Paragraph(f"<b>Ref:</b> {ref_no}", normal_style))
             elements.append(Paragraph(f"<b>Date:</b> {current_date}", normal_style))
-            elements.append(Spacer(1, 10))
+            elements.append(Spacer(1, 8))
             
             to_address = f"<b>To:</b><br/><b>{c_name}</b><br/><b>Attn:</b> {c_attn} (Mob: {c_phone})<br/>{c_addr}"
             elements.append(Paragraph(to_address, normal_style))
-            elements.append(Spacer(1, 12))
+            elements.append(Spacer(1, 10))
             
             elements.append(Paragraph("<b>Subject: Price offer for supplying Rahimafrooz battery.</b>", styles['Heading3']))
             elements.append(Paragraph("Dear Sir, Greetings!<br/>In reference to your mail, please find price offer & warranty terms for Rahimafrooz battery to serve your requirement.", normal_style))
-            elements.append(Spacer(1, 12))
+            elements.append(Spacer(1, 10))
             
             elements.append(Paragraph("<b>Price Offer Summary:</b>", styles['Heading4']))
-            elements.append(Spacer(1, 5))
+            elements.append(Spacer(1, 4))
             
             table_data = [
                 ["Brand", "Type", "Post", "Volt", "AH", "Plate", "Type", "Warranty", "Retail Price w/ VAT", "Offer Without VAT", "VAT (15%)", "Special Offer With VAT"]
@@ -210,20 +211,21 @@ else:
                     item["Offer_WO_VAT"], item["VAT"], item["Special"]
                 ])
             
-            t = Table(table_data, colWidths=[65, 100, 35, 30, 35, 40, 45, 55, 75, 75, 60, 85])
+            # Adjusted column widths to fit Letter size width perfectly
+            t = Table(table_data, colWidths=[55, 75, 30, 25, 30, 32, 35, 40, 62, 62, 50, 68])
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EAEAEA")),
                 ('ALIGN', (0,0), (-1,-1), 'CENTER'),
                 ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
                 ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0,0), (-1,-1), 8),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-                ('TOPPADDING', (0,0), (-1,-1), 6),
+                ('FONTSIZE', (0,0), (-1,-1), 7.5),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+                ('TOPPADDING', (0,0), (-1,-1), 5),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#999999")),
             ]))
             
             elements.append(t)
-            elements.append(Spacer(1, 15))
+            elements.append(Spacer(1, 12))
             
             elements.append(Paragraph("<b>Terms & Conditions:</b>", styles['Heading4']))
             terms_text = """
@@ -235,10 +237,10 @@ else:
             • <b>VAT/TAX:</b> Rahimafrooz will provide Mushok 6.3. AIT deductible as per NBR rule.
             """
             elements.append(Paragraph(terms_text, normal_style))
-            elements.append(Spacer(1, 20))
+            elements.append(Spacer(1, 15))
             
             elements.append(Paragraph("Best Regards,", normal_style))
-            elements.append(Spacer(1, 15))
+            elements.append(Spacer(1, 12))
             elements.append(Paragraph("<b>Md. Kamrul Islam</b><br/>Manager, B2B Sales<br/>Rahimafrooz Batteries Ltd<br/>Contact: +8801819466163", normal_style))
             
             doc.build(elements)
