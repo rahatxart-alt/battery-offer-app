@@ -882,74 +882,32 @@ def build_offer_pdf():
 
     c.drawText(text)
 
-    # ---------- BATTERY HEADING + TABLE ----------
-    # White-out old heading and old product table.
+    # ---------- BATTERY TABLE ----------
+    # Remove the old section completely. The final PDF should show
+    # only the compact battery price table here — no extra heading.
     c.setFillColor(colors.white)
     c.rect(
-        27, 281, 558, 92,
+        20, 245, 565, 190,
         stroke=0,
         fill=1,
     )
 
-    # Determine heading from selected battery information.
-    brands = []
-    warranties = []
-    posts = []
-
-    for item in selected_items:
-        if item["Brand"] not in brands:
-            brands.append(item["Brand"])
-        if item["Warranty"] not in warranties:
-            warranties.append(item["Warranty"])
-        if item["Post"] not in posts:
-            posts.append(item["Post"])
-
-    brand_text = ", ".join(brands) if brands else "Rahimafrooz"
-    warranty_text = (
-        f" ({', '.join(warranties)} Warranty)"
-        if warranties
-        else ""
-    )
-    post_text = (
-        f" {', '.join(posts)} POST"
-        if posts
-        else ""
-    )
-
-    heading = (
-        f"Price Offer of {brand_text} Battery"
-        f"{warranty_text}{post_text}"
-    )
-
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 10.5)
-
-    # Center heading approximately where the original heading sits.
-    max_heading_width = 470
-    if c.stringWidth(heading, "Helvetica-Bold", 10.5) > max_heading_width:
-        heading = (
-            f"Price Offer of {brand_text} Battery"
-            f"{warranty_text}"
-        )
-
-    heading_width = c.stringWidth(heading, "Helvetica-Bold", 10.5)
-    c.drawString(
-        (page_w - heading_width) / 2,
-        350,
-        heading,
-    )
-
-    # Dynamic table.
+    # 12-column table matching the requested original format.
     table_data = [
         [
             "SL",
+            "Brand",
             "Type",
+            "Post",
             "Volt",
             "AH",
-            "Retail price\nwith VAT",
-            "Special offered price\nWithout VAT",
-            "VAT",
-            "Special Offered\nprice with VAT",
+            "Plate",
+            "Type",
+            "Warranty",
+            "Retail\nprice with\nVAT",
+            "Offer\nWithout\nVAT",
+            "VAT\n(15%)",
+            "Special Offer\nWith VAT",
         ]
     ]
 
@@ -957,9 +915,14 @@ def build_offer_pdf():
         table_data.append(
             [
                 str(i),
+                item["Brand"],
                 item["Type"],
+                item["Post"],
                 item["Volt"],
                 item["AH"],
+                item["Plate"],
+                item["Type_Sub"],
+                item["Warranty"],
                 item["Retail"],
                 item["Offer_WO_VAT"],
                 item["VAT"],
@@ -967,13 +930,28 @@ def build_offer_pdf():
             ]
         )
 
-    # Draw the table in the same position/visual style as the master.
-    from reportlab.platypus import Table, TableStyle
+    # Total = 558 points, fitting the A4 master pad width.
+    # Extra width is allocated to Type and price columns.
+    column_widths = [
+        24,   # SL
+        54,   # Brand
+        92,   # Type
+        30,   # Post
+        31,   # Volt
+        30,   # AH
+        35,   # Plate
+        34,   # Type (sub)
+        43,   # Warranty
+        62,   # Retail price with VAT
+        65,   # Offer without VAT
+        42,   # VAT
+        46,   # Special offer with VAT
+    ]
 
     table = Table(
         table_data,
-        colWidths=[42, 76, 48, 48, 100, 112, 52, 92],
-        rowHeights=[27] + [22] * len(selected_items),
+        colWidths=column_widths,
+        rowHeights=[30] + [24] * len(selected_items),
     )
 
     table.setStyle(
@@ -981,23 +959,26 @@ def build_offer_pdf():
             [
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("LEADING", (0, 0), (-1, -1), 9),
+                ("FONTSIZE", (0, 0), (-1, 0), 6.2),
+                ("FONTSIZE", (0, 1), (-1, -1), 6.4),
+                ("LEADING", (0, 0), (-1, -1), 7),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.7, colors.black),
+                ("GRID", (0, 0), (-1, -1), 0.65, colors.black),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.white),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1.5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1.5),
             ]
         )
     )
 
-    # The original table starts around x=27 and y=287.
-    table_width, table_height = table.wrapOn(c, 558, 110)
-    table.drawOn(c, 27, 286 - (table_height - 1))
+    table_width, table_height = table.wrapOn(c, 558, 180)
+
+    # Put the compact table higher on page 2, immediately after
+    # the customer/message area and without the removed headings.
+    table.drawOn(c, 27, 305)
 
     c.save()
     overlay_buffer.seek(0)
