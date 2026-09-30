@@ -796,8 +796,6 @@ def build_offer_pdf():
 
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import Paragraph
-    from reportlab.lib.styles import ParagraphStyle
 
     # Prefer a local master PDF when available. If Streamlit Cloud
     # does not have the PDF as a separate repository file, fall back
@@ -827,14 +825,6 @@ def build_offer_pdf():
     c = canvas.Canvas(overlay_buffer, pagesize=letter)
     page_w, page_h = letter
 
-    # ---------- PAGE MARGIN LINES ----------
-    # Keep a clean, continuous left/right margin line through the offer page.
-    c.setStrokeColor(colors.black)
-    c.setLineWidth(0.7)
-    # Match the master pad's full-height left/right margin.
-    c.line(35, 18, 35, page_h - 18)
-    c.line(page_w - 35, 18, page_w - 35, page_h - 18)
-
     # ---------- DYNAMIC REF + DATE ----------
     # IMPORTANT:
     # The master PDF already contains Ref/Date in the correct
@@ -856,20 +846,20 @@ def build_offer_pdf():
     # White-out only the old customer name/address.
     c.setFillColor(colors.white)
     c.rect(
-        26, 568, 560, 48,
+        26, 568, 270, 64,
         stroke=0,
         fill=1,
     )
 
     c.setFillColor(colors.black)
-    c.setFont("Times-Bold", 18)
+    c.setFont("Times-Bold", 10.5)
     c.drawString(31, 603, c_name)
 
     c.setFont("Times-Roman", 10)
-    # Attn / Concern Person is intentionally NOT printed on the PDF.
-    # Keep only the customer address.
     customer_lines = []
 
+    if c_attn:
+        customer_lines.append(c_attn)
     if c_addr:
         customer_lines.extend(
             [line.strip() for line in str(c_addr).splitlines() if line.strip()]
@@ -901,94 +891,47 @@ def build_offer_pdf():
     # Remove the old section completely. The final PDF should show
     # only the compact battery price table here — no extra heading.
     c.setFillColor(colors.white)
-
-    # Clear only the old battery heading and old table.
-    # IMPORTANT: keep the full Dear Sir / Greetings / description /
-    # requirement paragraphs above this area untouched.
-    # Clear ONLY the old battery-section heading.
-    # The description / requirement text above must remain untouched.
     c.rect(
-        20, 330, 565, 62,
-        stroke=0,
-        fill=1,
-    )
-
-    # Clear ONLY the original master battery table area.
-    # Do not extend this rectangle into the description area.
-    c.rect(
-        20, 205, 565, 125,
+        20, 245, 565, 190,
         stroke=0,
         fill=1,
     )
 
     # 12-column table matching the requested original format.
-    # Larger Times font, with wrapping inside cells so the table remains
-    # readable and never crosses its borders.
-    header_style = ParagraphStyle(
-        "OfferHeader",
-        fontName=PDF_BOLD_FONT,
-        fontSize=9.0,
-        leading=9.6,
-        alignment=1,
-        textColor=colors.black,
-        spaceAfter=0,
-        spaceBefore=0,
-    )
-    body_style = ParagraphStyle(
-        "OfferBody",
-        fontName=PDF_BODY_FONT,
-        fontSize=8.5,
-        leading=9.5,
-        alignment=1,
-        textColor=colors.black,
-        spaceAfter=0,
-        spaceBefore=0,
-    )
-
-    def P(value, style=body_style):
-        value = "" if value is None else str(value)
-        # Preserve intentional <br/> tags for table headers.
-        value = value.replace("&", "&amp;")
-        value = value.replace("<br/>", "__BR__")
-        value = value.replace("<", "&lt;").replace(">", "&gt;")
-        value = value.replace("__BR__", "<br/>")
-        value = value.replace("\n", "<br/>")
-        return Paragraph(value, style)
-
     table_data = [
         [
-            P("SL", header_style),
-            P("Brand", header_style),
-            P("Type", header_style),
-            P("Post", header_style),
-            P("Volt", header_style),
-            P("AH", header_style),
-            P("Plate", header_style),
-            P("Type", header_style),
-            P("Warranty", header_style),
-            P("Retail<br/>price with<br/>VAT", header_style),
-            P("Offer<br/>Without<br/>VAT", header_style),
-            P("VAT<br/>(15%)", header_style),
-            P("Special Offer<br/>With VAT", header_style),
+            "SL",
+            "Brand",
+            "Type",
+            "Post",
+            "Volt",
+            "AH",
+            "Plate",
+            "Type",
+            "Warranty",
+            "Retail\nprice with\nVAT",
+            "Offer\nWithout\nVAT",
+            "VAT\n(15%)",
+            "Special Offer\nWith VAT",
         ]
     ]
 
     for i, item in enumerate(selected_items, start=1):
         table_data.append(
             [
-                P(i),
-                P(item["Brand"]),
-                P(item["Type"]),
-                P(item["Post"]),
-                P(item["Volt"]),
-                P(item["AH"]),
-                P(item["Plate"]),
-                P(item["Type_Sub"]),
-                P(item["Warranty"]),
-                P(item["Retail"]),
-                P(item["Offer_WO_VAT"]),
-                P(item["VAT"]),
-                P(item["Special"]),
+                str(i),
+                item["Brand"],
+                item["Type"],
+                item["Post"],
+                item["Volt"],
+                item["AH"],
+                item["Plate"],
+                item["Type_Sub"],
+                item["Warranty"],
+                item["Retail"],
+                item["Offer_WO_VAT"],
+                item["VAT"],
+                item["Special"],
             ]
         )
 
@@ -997,25 +940,25 @@ def build_offer_pdf():
     # The table is also centered below, so the rightmost column cannot
     # cross the page/master-pad boundary.
     column_widths = [
-        24,   # SL
-        52,   # Brand
-        84,   # Type
-        30,   # Post
-        31,   # Volt
-        30,   # AH
-        35,   # Plate
-        34,   # Type (sub)
-        46,   # Warranty
+        22,   # SL
+        48,   # Brand
+        80,   # Type
+        28,   # Post
+        30,   # Volt
+        28,   # AH
+        33,   # Plate
+        32,   # Type (sub)
+        42,   # Warranty
         58,   # Retail price with VAT
-        60,   # Offer without VAT
+        62,   # Offer without VAT
         40,   # VAT
-        41,   # Special offer with VAT
+        42,   # Special offer with VAT
     ]
 
     table = Table(
         table_data,
         colWidths=column_widths,
-        repeatRows=1,
+        rowHeights=[30] + [24] * len(selected_items),
     )
 
     table.setStyle(
@@ -1023,30 +966,30 @@ def build_offer_pdf():
             [
                 ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
                 ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("FONTSIZE", (0, 1), (-1, -1), 8.5),
-                ("LEADING", (0, 0), (-1, -1), 9.5),
+                ("FONTSIZE", (0, 0), (-1, 0), 6.2),
+                ("FONTSIZE", (0, 1), (-1, -1), 6.4),
+                ("LEADING", (0, 0), (-1, -1), 7),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("GRID", (0, 0), (-1, -1), 0.65, colors.black),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.white),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1.5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1.5),
             ]
         )
     )
 
-    table_width, table_height = table.wrapOn(c, page_w, 220)
+    table_width, table_height = table.wrapOn(c, 525, 180)
 
-    # Center the table on the actual Letter page.
-    # The total width is constrained so it remains inside the
-    # master-pad margin.
-    table_x = (page_w - table_width) / 2
+    # Center the table inside the A4 page.
+    # This prevents the final price column from crossing the
+    # master-pad border.
+    table_x = (A4[0] - table_width) / 2
 
-    # Keep the table below the full description block.
-    table.drawOn(c, table_x, 205)
+    # Put the compact table higher on page 2.
+    table.drawOn(c, table_x, 305)
 
     c.save()
     overlay_buffer.seek(0)
