@@ -736,6 +736,11 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ============================================================
 FY_CODE = "26-27"
 
+# PDF font: Times family (portable Times New Roman-style font)
+PDF_BODY_FONT = "Times-Roman"
+PDF_BOLD_FONT = "Times-Bold"
+PDF_ITALIC_FONT = "Times-Italic"
+
 
 def customer_code(customer_name):
     """
@@ -830,11 +835,11 @@ def build_offer_pdf():
     c.rect(28, 634, 556, 20, stroke=0, fill=1)
 
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10.5)
+    c.setFont("Times-Roman", 10.5)
     c.drawString(31, 644, f"Ref: {ref_no}")
 
     date_text = f"Date: {current_date}"
-    date_width = c.stringWidth(date_text, "Helvetica", 10.5)
+    date_width = c.stringWidth(date_text, "Times-Roman", 10.5)
     c.drawString(page_w - date_width - 30, 644, date_text)
 
     # ---------- CUSTOMER BLOCK ----------
@@ -847,10 +852,10 @@ def build_offer_pdf():
     )
 
     c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 10.5)
+    c.setFont("Times-Bold", 10.5)
     c.drawString(31, 603, c_name)
 
-    c.setFont("Helvetica", 10)
+    c.setFont("Times-Roman", 10)
     customer_lines = []
 
     if c_attn:
@@ -865,7 +870,7 @@ def build_offer_pdf():
         customer_lines = [""]
 
     text = c.beginText(31, 584)
-    text.setFont("Helvetica", 10)
+    text.setFont("Times-Roman", 10)
 
     # Keep the customer block compact like the original pad.
     from textwrap import wrap
@@ -930,22 +935,24 @@ def build_offer_pdf():
             ]
         )
 
-    # Total = 558 points, fitting the A4 master pad width.
-    # Extra width is allocated to Type and price columns.
+    # Keep the complete 13-column table inside the master-page border.
+    # Total width = 525 points.
+    # The table is also centered below, so the rightmost column cannot
+    # cross the page/master-pad boundary.
     column_widths = [
-        24,   # SL
-        54,   # Brand
-        92,   # Type
-        30,   # Post
-        31,   # Volt
-        30,   # AH
-        35,   # Plate
-        34,   # Type (sub)
-        43,   # Warranty
-        62,   # Retail price with VAT
-        65,   # Offer without VAT
-        42,   # VAT
-        46,   # Special offer with VAT
+        22,   # SL
+        48,   # Brand
+        80,   # Type
+        28,   # Post
+        30,   # Volt
+        28,   # AH
+        33,   # Plate
+        32,   # Type (sub)
+        42,   # Warranty
+        58,   # Retail price with VAT
+        62,   # Offer without VAT
+        40,   # VAT
+        42,   # Special offer with VAT
     ]
 
     table = Table(
@@ -957,8 +964,8 @@ def build_offer_pdf():
     table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
                 ("FONTSIZE", (0, 0), (-1, 0), 6.2),
                 ("FONTSIZE", (0, 1), (-1, -1), 6.4),
                 ("LEADING", (0, 0), (-1, -1), 7),
@@ -974,11 +981,15 @@ def build_offer_pdf():
         )
     )
 
-    table_width, table_height = table.wrapOn(c, 558, 180)
+    table_width, table_height = table.wrapOn(c, 525, 180)
 
-    # Put the compact table higher on page 2, immediately after
-    # the customer/message area and without the removed headings.
-    table.drawOn(c, 27, 305)
+    # Center the table inside the A4 page.
+    # This prevents the final price column from crossing the
+    # master-pad border.
+    table_x = (A4[0] - table_width) / 2
+
+    # Put the compact table higher on page 2.
+    table.drawOn(c, table_x, 305)
 
     c.save()
     overlay_buffer.seek(0)
